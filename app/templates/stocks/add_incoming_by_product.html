@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Приход товара - OZON Warehouse{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Приход товара на склад</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="incomingForm">
+                    <div class="mb-3">
+                        <label for="product_id" class="form-label">Выберите товар *</label>
+                        <select class="form-select" id="product_id" name="product_id" required onchange="loadVariations()">
+                            <option value="">Выберите товар</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}">{{ product.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div id="variations-container" style="display: none;">
+                        <h5 class="mb-3">Вариации товара</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Артикул</th>
+                                        <th>Цвет</th>
+                                        <th>Размер</th>
+                                        <th>Количество</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="variations-body">
+                                    <!-- Вариации будут загружены через AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="comment" class="form-label">Комментарий</label>
+                        <textarea class="form-control" id="comment" name="comment" rows="2" 
+                                  placeholder="Например: Поступление от поставщика"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('stocks.stocks_overview') }}" class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-primary">Добавить приход</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function loadVariations() {
+    const productId = document.getElementById('product_id').value;
+    if (!productId) {
+        document.getElementById('variations-container').style.display = 'none';
+        return;
+    }
+
+    fetch(`/api/product/${productId}/variations`)
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('variations-container');
+            const body = document.getElementById('variations-body');
+            body.innerHTML = '';
+
+            if (data.variations && data.variations.length > 0) {
+                data.variations.forEach(variation => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><code>${variation.sku}</code></td>
+                        <td>${variation.color || '—'}</td>
+                        <td>${variation.size || '—'}</td>
+                        <td>
+                            <input type="number" class="form-control" 
+                                   name="quantity_${variation.id}" 
+                                   value="0" min="0" placeholder="0">
+                        </td>
+                    `;
+                    body.appendChild(row);
+                });
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading variations:', error);
+        });
+}
+</script>
+{% endblock %}

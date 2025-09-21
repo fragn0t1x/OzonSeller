@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Приход товара - OZON Warehouse{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Приход товара на склад</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="variation_id" class="form-label">Выберите вариацию *</label>
+                        <select class="form-select" id="variation_id" name="variation_id" required>
+                            <option value="">Выберите вариацию</option>
+                            {% for variation, product in variations %}
+                            <option value="{{ variation.id }}">
+                                {{ product.name }} - {{ variation.variation_name }} ({{ variation.sku }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Количество *</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" 
+                               min="1" required placeholder="Введите количество">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="comment" class="form-label">Комментарий</label>
+                        <textarea class="form-control" id="comment" name="comment" rows="2" 
+                                  placeholder="Например: Поступление от поставщика"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('stocks.stocks_overview') }}" class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-primary">Добавить приход</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

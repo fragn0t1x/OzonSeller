@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Приход товара - {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Приход товара: {{ product.name }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Артикул</th>
+                                    <th>Размер</th>
+                                    <th>Цвет</th>
+                                    <th>Кол-во в упаковке</th>
+                                    <th>Кол-во штук</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for position in positions %}
+                                <tr>
+                                    <td><code>{{ position.sku }}</code></td>
+                                    <td>{{ position.size or '—' }}</td>
+                                    <td>{{ position.color or '—' }}</td>
+                                    <td>{{ position.package_quantity }}</td>
+                                    <td>
+                                        <input type="number" class="form-control" 
+                                               name="quantity_{{ position.id }}" 
+                                               value="0" min="0" placeholder="0">
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Комментарий</label>
+                        <textarea class="form-control" name="comment" rows="2" 
+                                  placeholder="Комментарий к приходу"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('stocks.incoming_select_product') }}" class="btn btn-secondary me-md-2">Назад</a>
+                        <button type="submit" class="btn btn-primary">Добавить приход</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

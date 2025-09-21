@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Добавить товар - Warehouse{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Добавить новый товар</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="productForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Название товара *</label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                   placeholder="Например: Носки спортивные">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="category_id" class="form-label">Категория *</label>
+                            <select class="form-select" id="category_id" name="category_id" required>
+                                <option value="">Выберите категорию</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                <a href="{{ url_for('categories.add_category') }}">Добавить новую категорию</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  placeholder="Описание товара"></textarea>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3">Позиции товара</h5>
+
+                    <div id="variations-container">
+                        <div class="variation-item card mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <label class="form-label">Размер</label>
+                                        <input type="text" class="form-control" name="sizes[]"
+                                               placeholder="36-41, M, L">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Цвет</label>
+                                        <input type="text" class="form-control" name="colors[]"
+                                               placeholder="черный, белый">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Кол-во в упаковке</label>
+                                        <input type="number" class="form-control" name="package_quantities[]"
+                                               value="1" min="1" placeholder="1, 5, 10">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Артикул (SKU) *</label>
+                                        <input type="text" class="form-control" name="skus[]" required
+                                               placeholder="Артикул товара">
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <button type="button" class="btn btn-danger remove-variation" disabled>
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" id="add-variation" class="btn btn-outline-primary mb-3">
+                        <i class="bi bi-plus-circle"></i> Добавить позицию
+                    </button>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('products.products_list') }}" class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-primary">Сохранить товар</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const variationsContainer = document.getElementById('variations-container');
+    const addButton = document.getElementById('add-variation');
+
+    // Добавление новой позиции
+    addButton.addEventListener('click', function() {
+        const newVariation = variationsContainer.firstElementChild.cloneNode(true);
+        const inputs = newVariation.querySelectorAll('input');
+        inputs.forEach(input => {
+            if (input.name.includes('package_quantities')) {
+                input.value = '1';
+            } else {
+                input.value = '';
+            }
+        });
+
+        const removeBtn = newVariation.querySelector('.remove-variation');
+        removeBtn.disabled = false;
+        removeBtn.addEventListener('click', function() {
+            newVariation.remove();
+        });
+
+        variationsContainer.appendChild(newVariation);
+    });
+
+    // Удаление позиции
+    variationsContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-variation')) {
+            if (variationsContainer.children.length > 1) {
+                e.target.closest('.variation-item').remove();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

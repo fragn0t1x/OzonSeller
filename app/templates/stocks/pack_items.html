@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Упаковка товара - OZON Warehouse{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Упаковка товара</h4>
+            </div>
+            <div class="card-body">
+                {% if variations %}
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="variation_id" class="form-label">Выберите вариацию *</label>
+                        <select class="form-select" id="variation_id" name="variation_id" required>
+                            <option value="">Выберите вариацию</option>
+                            {% for variation, stock, product in variations %}
+                            <option value="{{ variation.id }}"
+                                    data-max="{{ stock.unpacked_quantity }}"
+                                    data-package="{{ variation.package_quantity }}">
+                                {{ product.name }} - {{ variation.variation_name }}
+                                (Доступно: {{ stock.unpacked_quantity }} шт.,
+                                Упаковка: {{ variation.package_quantity }} шт.)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Количество для упаковки *</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity"
+                               min="1" required placeholder="Введите количество">
+                        <div class="form-text">Максимально доступно: <span id="max-quantity">0</span> шт.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="comment" class="form-label">Комментарий</label>
+                        <textarea class="form-control" id="comment" name="comment" rows="2"
+                                  placeholder="Например: Упаковка для отправки в OZON"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('stocks.stocks_overview') }}" class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-success">Упаковать товар</button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">Нет товаров доступных для упаковки</p>
+                    <a href="{{ url_for('stocks.add_incoming') }}" class="btn btn-primary">Добавить приход товара</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const variationSelect = document.getElementById('variation_id');
+    const quantityInput = document.getElementById('quantity');
+    const maxQuantitySpan = document.getElementById('max-quantity');
+
+    variationSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const maxUnits = selectedOption.getAttribute('data-max') || 0;
+        const packageQuantity = selectedOption.getAttribute('data-package') || 1;
+
+        // Максимальное количество паковок = доступные штуки / количество в упаковке
+        const maxPackages = Math.floor(maxUnits / packageQuantity);
+
+        maxQuantitySpan.textContent = `${maxPackages} уп. (${maxUnits} шт.)`;
+        quantityInput.max = maxPackages;
+
+        if (parseInt(quantityInput.value) > maxPackages) {
+            quantityInput.value = maxPackages;
+        }
+    });
+});
+</script>
+{% endblock %}

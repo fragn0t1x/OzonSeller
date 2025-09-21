@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - Детальная информация{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ product.name }}</h1>
+    <a href="{{ url_for('products.products_list') }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Назад к списку
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Основная информация</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th width="120">Категория:</th>
+                        <td>{{ product.category.name if product.category else 'Не указана' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Описание:</th>
+                        <td>{{ product.description or '—' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Кол-во вариаций:</th>
+                        <td>{{ variations_with_stock|length }}</td>
+                    </tr>
+                    <tr>
+                        <th>Общие остатки:</th>
+                        <td class="fw-bold">
+                            {% set total_stock = 0 %}
+                            {% for item in variations_with_stock %}
+                                {% set total_stock = total_stock + item.total %}
+                            {% endfor %}
+                            {{ total_stock }} шт.
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Остатки товара</h5>
+    </div>
+    <div class="card-body">
+        {% if variations_with_stock %}
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Размер</th>
+                            <th>Цвет</th>
+                            <th>Неупакованные<br><small class="text-muted">(шт.)</small></th>
+                            <th>Упакованные</th>
+                            <th>Общее кол-во</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set size_color_combinations = {} %}
+
+                        <!-- Группируем по размеру и цвету -->
+                        {% for item in variations_with_stock %}
+                            {% set size = item.variation.size or 'Без размера' %}
+                            {% set color = item.variation.color or 'Без цвета' %}
+                            {% set key = (size, color) %}
+                            {% if key not in size_color_combinations %}
+                                {% set _ = size_color_combinations.update({key: []}) %}
+                            {% endif %}
+                            {% set _ = size_color_combinations[key].append(item) %}
+                        {% endfor %}
+
+                        {% for key, items in size_color_combinations.items() %}
+                        {% set size, color = key %}
+                        <tr>
+                            <td class="fw-bold align-middle">{{ size }}</td>
+                            <td class="align-middle">{{ color }}</td>
+
+                            <!-- Неупакованные -->
+                            <td class="text-center align-middle">
+                                {% set unpacked_total = 0 %}
+                                {% for item in items %}
+                                    {% set unpacked_total = unpacked_total + item.unpacked_total %}
+                                {% endfor %}
+                                <span class="fw-bold {% if unpacked_total > 0 %}text-success{% else %}text-muted{% endif %}">
+                                    {{ unpacked_total }}
+                                </span>
+                            </td>
+
+                            <!-- Упакованные -->
+                            <td>
+                                {% set has_packed = false %}
+                                {% for item in items %}
+                                    {% if item.stock and item.stock.packed_quantity > 0 %}
+                                        {% set has_packed = true %}
+                                        <div class="packed-item mb-2 p-2 border rounded">
+                                            <div class="row align-items-center">
+                                                <div class="col-4">
+                                                    <strong>Артикул:</strong><br>
+                                                    <code>{{ item.variation.sku }}</code>
+                                                </div>
+                                                <div class="col-3">
+                                                    <strong>В упаковке:</strong><br>
+                                                    {{ item.variation.package_quantity }} шт.
+                                                </div>
+                                                <div class="col-3">
+                                                    <strong>Упаковано:</strong><br>
+                                                    <span class="fw-bold text-primary">
+                                                        {{ item.stock.packed_quantity }} уп.
+                                                    </span>
+                                                </div>
+                                                <div class="col-2">
+                                                    <strong>Итого:</strong><br>
+                                                    <span class="fw-bold">
+                                                        {{ item.stock.packed_quantity * item.variation.package_quantity }} шт.
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if not has_packed %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Общее количество -->
+                            <td class="text-center align-middle">
+                                {% set total_for_combo = 0 %}
+                                {% for item in items %}
+                                    {% set total_for_combo = total_for_combo + item.total %}
+                                {% endfor %}
+                                <span class="fw-bold fs-5">{{ total_for_combo }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        {% else %}
+            <div class="text-center py-4">
+                <p class="text-muted">Вариации товара не найдены</p>
+                <a href="{{ url_for('products.add_product') }}" class="btn btn-primary">Добавить вариации</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ВРЕМЕННО ДЛЯ ОТЛАДКИ -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Отладочная информация</h5>
+    </div>
+    <div class="card-body">
+        <h6>Данные из базы:</h6>
+        {% for item in variations_with_stock %}
+        <div class="mb-2">
+            <strong>{{ item.variation.sku }}</strong><br>
+            Неупаковано (в базе): {{ item.stock.unpacked_quantity if item.stock else 0 }}<br>
+            Упаковано (в базе): {{ item.stock.packed_quantity if item.stock else 0 }}<br>
+            В упаковке: {{ item.variation.package_quantity }}<br>
+            Расчет: {{ item.unpacked_total }} + ({{ item.stock.packed_quantity if item.stock else 0 }} * {{ item.variation.package_quantity }}) = {{ item.total }}
+        </div>
+        <hr>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.packed-item {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+}
+
+.packed-item:hover {
+    background-color: #e9ecef;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.fs-5 {
+    font-size: 1.25rem !important;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Упаковка товара - {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Упаковка товара: {{ product.name }}</h4>
+            </div>
+            <div class="card-body">
+                {% if positions_with_stock %}
+                <form method="POST">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Артикул</th>
+                                    <th>Размер</th>
+                                    <th>Цвет</th>
+                                    <th>Кол-во в упаковке</th>
+                                    <th>Доступно (шт)</th>
+                                    <th>Кол-во упаковок</th>
+                                    <th>Потребуется (шт)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in positions_with_stock %}
+                                <tr>
+                                    <td><code>{{ item.position.sku }}</code></td>
+                                    <td>{{ item.position.size or '—' }}</td>
+                                    <td>{{ item.position.color or '—' }}</td>
+                                    <td>{{ item.position.package_quantity }}</td>
+                                    <td class="text-success fw-bold">{{ item.stock.unpacked_quantity }}</td>
+                                    <td>
+                                        <input type="number" class="form-control"
+                                               name="quantity_{{ item.position.id }}"
+                                               value="0" min="0"
+                                               max="{{ item.stock.unpacked_quantity // item.position.package_quantity }}"
+                                               placeholder="0"
+                                               oninput="updateRequiredQuantity(this, {{ item.position.package_quantity }})">
+                                    </td>
+                                    <td class="text-info fw-bold" id="required_{{ item.position.id }}">0</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Комментарий</label>
+                        <textarea class="form-control" name="comment" rows="2"
+                                  placeholder="Комментарий к упаковке"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('stocks.packing_select_product') }}" class="btn btn-secondary me-md-2">Назад</a>
+                        <button type="submit" class="btn btn-success">Упаковать товар</button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">Нет товаров доступных для упаковки</p>
+                    <a href="{{ url_for('stocks.incoming_select_product') }}" class="btn btn-primary">Добавить приход товара</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateRequiredQuantity(input, packageQuantity) {
+    const quantity = parseInt(input.value) || 0;
+    const required = quantity * packageQuantity;
+    document.getElementById('required_' + input.name.split('_')[1]).textContent = required;
+}
+
+// Обновляем при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('input[type="number"]');
+    inputs.forEach(input => {
+        const nameParts = input.name.split('_');
+        if (nameParts.length === 3) {
+            const positionId = nameParts[1];
+            const packageQuantity = parseInt(input.getAttribute('oninput').match(/\d+/)[0]);
+            updateRequiredQuantity(input, packageQuantity);
+        }
+    });
+});
+</script>
+{% endblock %}

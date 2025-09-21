@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Warehouse{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h1>Управление складом</h1>
+        <p class="lead">Система для управления остатками товаров на вашем складе</p>
+
+        <div class="row mt-4">
+            <div class="col-md-4 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ products_count }}</h5>
+                        <p class="card-text">Товаров</p>
+                        <a href="{{ url_for('products.products_list') }}" class="btn btn-primary btn-sm">Управление</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ variations_count }}</h5>
+                        <p class="card-text">Позиций</p>
+                        <a href="{{ url_for('stocks.stocks_overview') }}" class="btn btn-primary btn-sm">Просмотр</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ total_stock }}</h5>
+                        <p class="card-text">Всего на складе</p>
+                        <a href="{{ url_for('stocks.stocks_overview') }}" class="btn btn-primary btn-sm">Детали</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Быстрые действия</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2 d-md-flex">
+                    <a href="{{ url_for('products.add_product') }}" class="btn btn-outline-primary me-md-2">
+                        <i class="bi bi-plus-circle"></i> Добавить товар
+                    </a>
+                    <a href="{{ url_for('stocks.incoming_select_product') }}" class="btn btn-outline-success me-md-2">
+                        <i class="bi bi-box-arrow-in-down"></i> Приход товара
+                    </a>
+                    <a href="{{ url_for('categories.add_category') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-tag"></i> Добавить категорию
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
