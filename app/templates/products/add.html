@@ -1,3 +1,4 @@
+<!-- app/templates/products/add.html -->
 {% extends "base.html" %}
 
 {% block title %}Добавить товар - Warehouse{% endblock %}
@@ -38,21 +39,52 @@
                     </div>
 
                     <hr>
-                    <h5 class="mb-3">Позиции товара</h5>
+                    <h5 class="mb-3">Вариации товара (размеры и цвета)</h5>
 
                     <div id="variations-container">
                         <div class="variation-item card mb-3">
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-2">
+                                    <div class="col-md-4">
                                         <label class="form-label">Размер</label>
                                         <input type="text" class="form-control" name="sizes[]"
                                                placeholder="36-41, M, L">
                                     </div>
-                                    <div class="col-md-2">
+                                    <div class="col-md-4">
                                         <label class="form-label">Цвет</label>
                                         <input type="text" class="form-control" name="colors[]"
                                                placeholder="черный, белый">
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button type="button" class="btn btn-danger remove-variation" disabled>
+                                            <i class="bi bi-trash"></i> Удалить
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" id="add-variation" class="btn btn-outline-primary mb-3">
+                        <i class="bi bi-plus-circle"></i> Добавить вариацию
+                    </button>
+
+                    <hr>
+                    <h5 class="mb-3">Упаковки товара</h5>
+
+                    <div id="packages-container">
+                        <div class="package-item card mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <label class="form-label">Размер</label>
+                                        <input type="text" class="form-control" name="package_sizes[]"
+                                               placeholder="36-41">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Цвет</label>
+                                        <input type="text" class="form-control" name="package_colors[]"
+                                               placeholder="черный">
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label">Кол-во в упаковке</label>
@@ -65,8 +97,8 @@
                                                placeholder="Артикул товара">
                                     </div>
                                     <div class="col-md-2 d-flex align-items-end">
-                                        <button type="button" class="btn btn-danger remove-variation" disabled>
-                                            <i class="bi bi-trash"></i>
+                                        <button type="button" class="btn btn-danger remove-package" disabled>
+                                            <i class="bi bi-trash"></i> Удалить
                                         </button>
                                     </div>
                                 </div>
@@ -74,8 +106,8 @@
                         </div>
                     </div>
 
-                    <button type="button" id="add-variation" class="btn btn-outline-primary mb-3">
-                        <i class="bi bi-plus-circle"></i> Добавить позицию
+                    <button type="button" id="add-package" class="btn btn-outline-primary mb-3">
+                        <i class="bi bi-plus-circle"></i> Добавить упаковку
                     </button>
 
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -91,13 +123,33 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Логика для вариаций
     const variationsContainer = document.getElementById('variations-container');
-    const addButton = document.getElementById('add-variation');
+    const addVariationButton = document.getElementById('add-variation');
 
-    // Добавление новой позиции
-    addButton.addEventListener('click', function() {
+    addVariationButton.addEventListener('click', function() {
         const newVariation = variationsContainer.firstElementChild.cloneNode(true);
         const inputs = newVariation.querySelectorAll('input');
+        inputs.forEach(input => input.value = '');
+
+        const removeBtn = newVariation.querySelector('.remove-variation');
+        removeBtn.disabled = false;
+        removeBtn.addEventListener('click', function() {
+            if (variationsContainer.children.length > 1) {
+                newVariation.remove();
+            }
+        });
+
+        variationsContainer.appendChild(newVariation);
+    });
+
+    // Логика для упаковок
+    const packagesContainer = document.getElementById('packages-container');
+    const addPackageButton = document.getElementById('add-package');
+
+    addPackageButton.addEventListener('click', function() {
+        const newPackage = packagesContainer.firstElementChild.cloneNode(true);
+        const inputs = newPackage.querySelectorAll('input');
         inputs.forEach(input => {
             if (input.name.includes('package_quantities')) {
                 input.value = '1';
@@ -106,20 +158,31 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        const removeBtn = newVariation.querySelector('.remove-variation');
+        const removeBtn = newPackage.querySelector('.remove-package');
         removeBtn.disabled = false;
         removeBtn.addEventListener('click', function() {
-            newVariation.remove();
+            if (packagesContainer.children.length > 1) {
+                newPackage.remove();
+            }
         });
 
-        variationsContainer.appendChild(newVariation);
+        packagesContainer.appendChild(newPackage);
     });
 
-    // Удаление позиции
+    // Удаление вариаций
     variationsContainer.addEventListener('click', function(e) {
         if (e.target.classList.contains('remove-variation')) {
             if (variationsContainer.children.length > 1) {
                 e.target.closest('.variation-item').remove();
+            }
+        }
+    });
+
+    // Удаление упаковок
+    packagesContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-package')) {
+            if (packagesContainer.children.length > 1) {
+                e.target.closest('.package-item').remove();
             }
         }
     });

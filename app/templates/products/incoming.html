@@ -1,0 +1,72 @@
+<!-- app/templates/products/incoming.html -->
+{% extends "base.html" %}
+
+{% block title %}Приход товара - {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Приход товара: {{ product.name }}</h1>
+    <div>
+        <a href="{{ url_for('products.product_detail', product_id=product.id) }}" class="btn btn-secondary me-2">
+            <i class="bi bi-arrow-left"></i> Назад к товару
+        </a>
+        <a href="{{ url_for('products.products_list') }}" class="btn btn-outline-secondary">
+            К списку товаров
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="card-title mb-0">Добавление прихода товара</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Размер</th>
+                                    <th>Цвет</th>
+                                    <th>Текущее кол-во (шт)</th>
+                                    <th>Кол-во штук для прихода</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for variation in variations %}
+                                <tr>
+                                    <td class="fw-bold">{{ variation.size or '—' }}</td>
+                                    <td>{{ variation.color or '—' }}</td>
+                                    <td class="fw-bold {% if variation.quantity > 0 %}text-success{% else %}text-muted{% endif %}">
+                                        {{ variation.quantity }}
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control"
+                                               name="quantity_{{ variation.id }}"
+                                               value="0" min="0" placeholder="0"
+                                               required>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Комментарий</label>
+                        <textarea class="form-control" name="comment" rows="2"
+                                  placeholder="Комментарий к приходу"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('products.product_detail', product_id=product.id) }}" class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-success">Добавить приход</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

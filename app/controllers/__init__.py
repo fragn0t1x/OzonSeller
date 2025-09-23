@@ -1,6 +1,6 @@
+# app/controllers/__init__.py
 from app.controllers.main import bp as main_bp
 from app.controllers.products import bp as products_bp
-from app.controllers.stocks import bp as stocks_bp
 from app.controllers.categories import bp as categories_bp
 from app.controllers.shipments import bp as shipments_bp
 

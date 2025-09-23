@@ -1,6 +1,7 @@
+# app/controllers/shipments.py
 from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app
 from app import db
-from app.models import Shipment, ShipmentItem, ProductVariation, OurWarehouseStock
+from app.models import Shipment, ShipmentItem, ProductPackage  # Убираем OurWarehouseStock и ProductVariation
 from datetime import datetime, timedelta
 
 bp = Blueprint('shipments', __name__)
@@ -17,20 +18,16 @@ def shipments_list():
 @bp.route('/create', methods=['GET', 'POST'])
 def create_shipment():
     """Создание новой отправки"""
-    # Убрали warehouses так как OzonWarehouse удален
-    variations = db.session.query(ProductVariation).join(
-        OurWarehouseStock,
-        OurWarehouseStock.variation_id == ProductVariation.id
-    ).filter(
-        OurWarehouseStock.packed_quantity > 0
+    # Ищем упакованные товары (packages с quantity > 0)
+    packages = ProductPackage.query.filter(
+        ProductPackage.quantity > 0
     ).options(
-        db.joinedload(ProductVariation.our_stock),
-        db.joinedload(ProductVariation.product)
+        db.joinedload(ProductPackage.product)
     ).all()
 
     if request.method == 'POST':
         try:
-            # Создаем отправку (убрали destination_warehouse_id)
+            # Создаем отправку
             shipment = Shipment(
                 shipment_number=f"SH{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
                 status='preparing',
@@ -40,28 +37,27 @@ def create_shipment():
             db.session.flush()
 
             # Добавляем товары в отправку
-            variation_ids = request.form.getlist('variation_ids[]')
+            package_ids = request.form.getlist('package_ids[]')
             quantities = request.form.getlist('quantities[]')
 
-            for variation_id, quantity in zip(variation_ids, quantities):
+            for package_id, quantity in zip(package_ids, quantities):
                 if not quantity or int(quantity) <= 0:
                     continue
 
-                variation = ProductVariation.query.get(int(variation_id))
-                stock = variation.get_stock()
-                if variation and stock and stock.packed_quantity >= int(quantity):
+                package = ProductPackage.query.get(int(package_id))
+                if package and package.quantity >= int(quantity):
                     # Добавляем товар в отправку
                     item = ShipmentItem(
                         shipment_id=shipment.id,
-                        variation_id=variation.id,
+                        package_id=package.id,  # Используем package.id
                         quantity=int(quantity)
                     )
                     db.session.add(item)
 
                     # Уменьшаем остатки упакованного товара
-                    stock.packed_quantity -= int(quantity)
+                    package.quantity -= int(quantity)
                 else:
-                    flash(f'Недостаточно товара для вариации {variation.sku}', 'warning')
+                    flash(f'Недостаточно товара для упаковки {package.sku}', 'warning')
 
             db.session.commit()
             flash('Отправка успешно создана!', 'success')
@@ -71,7 +67,7 @@ def create_shipment():
             db.session.rollback()
             flash(f'Ошибка при создании отправки: {str(e)}', 'danger')
 
-    return render_template('shipments/create.html', variations=variations)
+    return render_template('shipments/create.html', packages=packages)
 
 @bp.route('/<int:shipment_id>')
 def shipment_detail(shipment_id):

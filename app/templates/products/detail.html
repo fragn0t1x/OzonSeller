@@ -1,3 +1,4 @@
+<!-- app/templates/products/detail.html - Исправленная версия -->
 {% extends "base.html" %}
 
 {% block title %}{{ product.name }} - Детальная информация{% endblock %}
@@ -5,9 +6,19 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>{{ product.name }}</h1>
-    <a href="{{ url_for('products.products_list') }}" class="btn btn-secondary">
-        <i class="bi bi-arrow-left"></i> Назад к списку
-    </a>
+    <div>
+        <a href="{{ url_for('products.product_incoming', product_id=product.id) }}"
+           class="btn btn-success me-2">
+            <i class="bi bi-box-arrow-in-down"></i> Приход товара
+        </a>
+        <a href="{{ url_for('products.product_packing', product_id=product.id) }}"
+           class="btn btn-warning me-2">
+            <i class="bi bi-box-seam"></i> Упаковка
+        </a>
+        <a href="{{ url_for('products.products_list') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Назад к списку
+        </a>
+    </div>
 </div>
 
 <div class="row">
@@ -26,20 +37,6 @@
                         <th>Описание:</th>
                         <td>{{ product.description or '—' }}</td>
                     </tr>
-                    <tr>
-                        <th>Кол-во вариаций:</th>
-                        <td>{{ variations_with_stock|length }}</td>
-                    </tr>
-                    <tr>
-                        <th>Общие остатки:</th>
-                        <td class="fw-bold">
-                            {% set total_stock = 0 %}
-                            {% for item in variations_with_stock %}
-                                {% set total_stock = total_stock + item.total %}
-                            {% endfor %}
-                            {{ total_stock }} шт.
-                        </td>
-                    </tr>
                 </table>
             </div>
         </div>
@@ -47,100 +44,135 @@
 </div>
 
 <div class="card">
-    <div class="card-header">
+    <div class="card-header bg-light">
         <h5 class="card-title mb-0">Остатки товара</h5>
     </div>
-    <div class="card-body">
-        {% if variations_with_stock %}
+    <div class="card-body p-0">
+        {% if size_color_groups %}
             <div class="table-responsive">
-                <table class="table table-bordered">
-                    <thead>
+                <table class="table table-bordered mb-0">
+                    <thead class="table-header-fixed">
                         <tr>
-                            <th>Размер</th>
-                            <th>Цвет</th>
-                            <th>Неупакованные<br><small class="text-muted">(шт.)</small></th>
-                            <th>Упакованные</th>
-                            <th>Общее кол-во</th>
+                            <th width="15%">Цвет</th>
+                            <th width="15%">Общее кол-во<br><small class="text-muted">(шт.)</small></th>
+                            <th width="15%">Неупакованные<br><small class="text-muted">(шт.)</small></th>
+                            <th width="35%">Упакованные</th>
+                            <th width="20%">Прогресс упаковки</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% set size_color_combinations = {} %}
-
-                        <!-- Группируем по размеру и цвету -->
-                        {% for item in variations_with_stock %}
-                            {% set size = item.variation.size or 'Без размера' %}
-                            {% set color = item.variation.color or 'Без цвета' %}
-                            {% set key = (size, color) %}
-                            {% if key not in size_color_combinations %}
-                                {% set _ = size_color_combinations.update({key: []}) %}
+                        {% set grouped_by_size = {} %}
+                        {% for group in size_color_groups %}
+                            {% set size_key = group.size or 'Без размера' %}
+                            {% if size_key not in grouped_by_size %}
+                                {% set _ = grouped_by_size.update({size_key: []}) %}
                             {% endif %}
-                            {% set _ = size_color_combinations[key].append(item) %}
+                            {% set _ = grouped_by_size[size_key].append(group) %}
                         {% endfor %}
 
-                        {% for key, items in size_color_combinations.items() %}
-                        {% set size, color = key %}
-                        <tr>
-                            <td class="fw-bold align-middle">{{ size }}</td>
-                            <td class="align-middle">{{ color }}</td>
+                        {% for size, groups in grouped_by_size.items() %}
+                            <tr class="size-group-header">
+                                <td colspan="5" class="text-white fw-bold fs-5">
+                                    <i class="bi bi-tag-fill me-2"></i>Размер: {{ size }}
+                                    <small class="opacity-90 ms-2">• {{ groups|length }} цветов</small>
+                                </td>
+                            </tr>
 
-                            <!-- Неупакованные -->
-                            <td class="text-center align-middle">
-                                {% set unpacked_total = 0 %}
-                                {% for item in items %}
-                                    {% set unpacked_total = unpacked_total + item.unpacked_total %}
-                                {% endfor %}
-                                <span class="fw-bold {% if unpacked_total > 0 %}text-success{% else %}text-muted{% endif %}">
-                                    {{ unpacked_total }}
-                                </span>
-                            </td>
+                            {% for group in groups %}
+                            <tr class="color-row {% if loop.index % 2 == 0 %}table-light{% else %}table-default{% endif %}">
+                                <td class="align-middle">
+                                    <span class="color-badge" style="background-color: {{ get_color_hex(group.color) }}; border: 2px solid #dee2e6;"></span>
+                                    <strong>{{ group.color or '—' }}</strong>
+                                </td>
 
-                            <!-- Упакованные -->
-                            <td>
-                                {% set has_packed = false %}
-                                {% for item in items %}
-                                    {% if item.stock and item.stock.packed_quantity > 0 %}
-                                        {% set has_packed = true %}
-                                        <div class="packed-item mb-2 p-2 border rounded">
-                                            <div class="row align-items-center">
-                                                <div class="col-4">
-                                                    <strong>Артикул:</strong><br>
-                                                    <code>{{ item.variation.sku }}</code>
-                                                </div>
-                                                <div class="col-3">
-                                                    <strong>В упаковке:</strong><br>
-                                                    {{ item.variation.package_quantity }} шт.
-                                                </div>
-                                                <div class="col-3">
-                                                    <strong>Упаковано:</strong><br>
-                                                    <span class="fw-bold text-primary">
-                                                        {{ item.stock.packed_quantity }} уп.
-                                                    </span>
-                                                </div>
-                                                <div class="col-2">
-                                                    <strong>Итого:</strong><br>
-                                                    <span class="fw-bold">
-                                                        {{ item.stock.packed_quantity * item.variation.package_quantity }} шт.
-                                                    </span>
+                                <td class="text-center align-middle">
+                                    {% set packed_quantities = [] %}
+                                    {% for package in group.packages %}
+                                        {% if package.quantity > 0 %}
+                                            {% set _ = packed_quantities.append(package.quantity * package.package_quantity) %}
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% set total_packed = packed_quantities | sum %}
+                                    {% set total_units = group.unpacked_quantity + total_packed %}
+
+                                    <span class="fw-bold fs-5 text-primary">{{ total_units }}</span>
+                                </td>
+
+                                <td class="text-center align-middle">
+                                    <span class="fw-bold {% if group.unpacked_quantity > 0 %}text-success{% else %}text-muted{% endif %}">
+                                        {{ group.unpacked_quantity }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {% set has_packed = false %}
+                                    {% for package in group.packages %}
+                                        {% if package.quantity > 0 %}
+                                            {% set has_packed = true %}
+                                            <div class="packed-item mb-2 p-2 border rounded bg-light">
+                                                <div class="row align-items-center">
+                                                    <div class="col-5">
+                                                        <strong>Артикул:</strong><br>
+                                                        <code class="small">{{ package.sku }}</code>
+                                                    </div>
+                                                    <div class="col-3">
+                                                        <strong>В упаковке:</strong><br>
+                                                        <span class="text-info">{{ package.package_quantity }} шт.</span>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <strong>Упаковано:</strong><br>
+                                                        <span class="fw-bold text-primary">
+                                                            {{ package.quantity }} уп.
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <!-- УБИРАЕМ ПРОЧЕРК ЕСЛИ ЕСТЬ УПАКОВАННЫЕ -->
+                                </td>
+
+                                <td class="text-center align-middle">
+                                    {% set packed_quantities = [] %}
+                                    {% for package in group.packages %}
+                                        {% if package.quantity > 0 %}
+                                            {% set _ = packed_quantities.append(package.quantity * package.package_quantity) %}
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% set total_packed = packed_quantities | sum %}
+                                    {% set total_units = group.unpacked_quantity + total_packed %}
+
+                                    {% if total_units > 0 %}
+                                        {% set packing_percentage = (total_packed / total_units * 100)|round(1) %}
+                                        <div class="progress-container">
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar bg-success"
+                                                     style="width: {{ packing_percentage }}%;"
+                                                     role="progressbar"
+                                                     aria-valuenow="{{ packing_percentage }}"
+                                                     aria-valuemin="0"
+                                                     aria-valuemax="100">
+                                                    {{ packing_percentage|int }}%
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">
+                                                {{ total_packed }} из {{ total_units }} шт.
+                                            </small>
                                         </div>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
                                     {% endif %}
-                                {% endfor %}
+                                </td>
+                            </tr>
 
-                                {% if not has_packed %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-
-                            <!-- Общее количество -->
-                            <td class="text-center align-middle">
-                                {% set total_for_combo = 0 %}
-                                {% for item in items %}
-                                    {% set total_for_combo = total_for_combo + item.total %}
-                                {% endfor %}
-                                <span class="fw-bold fs-5">{{ total_for_combo }}</span>
-                            </td>
-                        </tr>
+                            {% if not loop.last %}
+                                <tr class="color-separator">
+                                    <td colspan="5" style="height: 2px; background-color: #e9ecef;"></td>
+                                </tr>
+                            {% endif %}
+                            {% endfor %}
                         {% endfor %}
                     </tbody>
                 </table>
@@ -148,47 +180,81 @@
 
         {% else %}
             <div class="text-center py-4">
-                <p class="text-muted">Вариации товара не найдены</p>
-                <a href="{{ url_for('products.add_product') }}" class="btn btn-primary">Добавить вариации</a>
+                <p class="text-muted">Товарные позиции не найдены</p>
+                <a href="{{ url_for('products.add_product') }}" class="btn btn-primary">Добавить позиции</a>
             </div>
         {% endif %}
     </div>
 </div>
 
-<!-- ВРЕМЕННО ДЛЯ ОТЛАДКИ -->
-<div class="card mt-4">
-    <div class="card-header">
-        <h5 class="card-title mb-0">Отладочная информация</h5>
-    </div>
-    <div class="card-body">
-        <h6>Данные из базы:</h6>
-        {% for item in variations_with_stock %}
-        <div class="mb-2">
-            <strong>{{ item.variation.sku }}</strong><br>
-            Неупаковано (в базе): {{ item.stock.unpacked_quantity if item.stock else 0 }}<br>
-            Упаковано (в базе): {{ item.stock.packed_quantity if item.stock else 0 }}<br>
-            В упаковке: {{ item.variation.package_quantity }}<br>
-            Расчет: {{ item.unpacked_total }} + ({{ item.stock.packed_quantity if item.stock else 0 }} * {{ item.variation.package_quantity }}) = {{ item.total }}
-        </div>
-        <hr>
-        {% endfor %}
-    </div>
-</div>
-
 <style>
+/* Фиксированный заголовок таблицы */
+.table-header-fixed {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.table-responsive {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.size-group-header td {
+    background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%) !important;
+    border: none !important;
+    position: relative;
+    position: sticky;
+    top: 45px; /* Высота заголовка таблицы */
+    z-index: 5;
+}
+
+.size-group-header td::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(255,255,255,0.3);
+}
+
+.color-row:hover {
+    background-color: #fff5f5 !important;
+}
+
+.color-badge {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
 .packed-item {
-    background-color: #f8f9fa;
-    transition: background-color 0.2s;
+    background: #fffaf0;
+    border-left: 4px solid #ff7e5f !important;
+    border-radius: 6px;
+    transition: all 0.3s ease;
 }
 
 .packed-item:hover {
+    background: #fff5e6;
+    transform: translateX(2px);
+}
+
+.color-separator td {
+    padding: 0 !important;
     background-color: #e9ecef;
 }
 
 .table th {
-    background-color: #f8f9fa;
     vertical-align: middle;
     text-align: center;
+    font-weight: 600;
 }
 
 .table td {
@@ -197,6 +263,38 @@
 
 .fs-5 {
     font-size: 1.25rem !important;
+}
+
+.progress-container {
+    min-width: 100px;
+}
+
+.progress {
+    background-color: #e9ecef;
+    border-radius: 5px;
+    margin-bottom: 5px;
+}
+
+.progress-bar {
+    border-radius: 5px;
+    font-size: 0.8rem;
+    line-height: 20px;
+    font-weight: 500;
+}
+
+.table-responsive {
+    font-size: 0.9rem;
+}
+
+.packed-item .row {
+    margin: 0 -5px;
+}
+
+.packed-item .col-2,
+.packed-item .col-3,
+.packed-item .col-4,
+.packed-item .col-5 {
+    padding: 0 5px;
 }
 </style>
 {% endblock %}

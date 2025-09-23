@@ -1,3 +1,4 @@
+# app/models/shipment.py
 from app import db
 from datetime import datetime
 
@@ -22,14 +23,14 @@ class ShipmentItem(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     shipment_id = db.Column(db.Integer, db.ForeignKey('shipments.id', ondelete='CASCADE'), nullable=False)
-    variation_id = db.Column(db.Integer, db.ForeignKey('product_variations.id', ondelete='CASCADE'), nullable=False)
+    package_id = db.Column(db.Integer, db.ForeignKey('product_packages.id', ondelete='CASCADE'), nullable=False)  # Меняем на package_id
     quantity = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    variation = db.relationship('ProductVariation', backref='shipment_items')
+    package = db.relationship('ProductPackage', backref='shipment_items')
 
     __table_args__ = (
-        db.UniqueConstraint('shipment_id', 'variation_id', name='_shipment_variation_uc'),
+        db.UniqueConstraint('shipment_id', 'package_id', name='_shipment_package_uc'),
     )
 
     def __repr__(self):

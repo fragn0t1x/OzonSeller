@@ -1,3 +1,4 @@
+<!-- app/templates/products/list.html -->
 {% extends "base.html" %}
 
 {% block title %}Товары - Warehouse{% endblock %}
@@ -21,7 +22,8 @@
                         <tr>
                             <th>Название</th>
                             <th>Категория</th>
-                            <th>Кол-во позиций</th>
+                            <th>Кол-во вариаций</th>
+                            <th>Общее кол-во</th>
                             <th>Дата создания</th>
                             <th>Действия</th>
                         </tr>
@@ -37,13 +39,33 @@
                                     <span class="text-muted">Не указана</span>
                                 {% endif %}
                             </td>
-                            <td>{{ product.variations_count }}</td>
+                            <td>{{ product.total_variations_count }}</td>
+                            <td class="fw-bold">
+                                {% set total_quantity = 0 %}
+                                {% for variation in product.variations %}
+                                    {% set total_quantity = total_quantity + variation.quantity %}
+                                    {% for package in variation.packages %}
+                                        {% set total_quantity = total_quantity + (package.quantity * package.package_quantity) %}
+                                    {% endfor %}
+                                {% endfor %}
+                                {{ total_quantity }} шт.
+                            </td>
                             <td>{{ product.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
                             <td>
-                                <a href="{{ url_for('products.product_detail', product_id=product.id) }}"
-                                   class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-eye"></i> Просмотр
-                                </a>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('products.product_detail', product_id=product.id) }}"
+                                       class="btn btn-sm btn-outline-primary" title="Просмотр">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('products.product_incoming', product_id=product.id) }}"
+                                       class="btn btn-sm btn-outline-success" title="Приход товара">
+                                        <i class="bi bi-box-arrow-in-down"></i>
+                                    </a>
+                                    <a href="{{ url_for('products.product_packing', product_id=product.id) }}"
+                                       class="btn btn-sm btn-outline-warning" title="Упаковка товара">
+                                        <i class="bi bi-box-seam"></i>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
