@@ -31,7 +31,6 @@
                                 <tr>
                                     <th>Размер</th>
                                     <th>Цвет</th>
-                                    <th>Доступно (шт)</th>
                                     <th>Артикул упаковки</th>
                                     <th>Штук в упаковке</th>
                                     <th>Макс. упаковок</th>
@@ -57,9 +56,6 @@
                                 <tr class="packing-row" data-group="{{ group_id }}" data-package-quantity="{{ package.package_quantity }}">
                                     <td>{{ variation.size or '—' }}</td>
                                     <td>{{ variation.color or '—' }}</td>
-                                    <td class="text-success fw-bold">
-                                        <span id="available_{{ group_id }}_{{ package.id }}">{{ group.remaining_quantity }}</span>
-                                    </td>
                                     <td><code>{{ package.sku }}</code></td>
                                     <td>{{ package.package_quantity }}</td>
                                     <td class="fw-bold">
