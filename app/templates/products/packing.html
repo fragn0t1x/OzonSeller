@@ -1,4 +1,3 @@
-<!-- app/templates/products/packing.html -->
 {% extends "base.html" %}
 
 {% block title %}Упаковка товара - {{ product.name }}{% endblock %}
@@ -20,63 +19,84 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header bg-warning text-dark">
-                <h4 class="card-title mb-0">Упаковка товара</h4>
+                <h4 class="card-title mb-0">
+                    <i class="bi bi-box-seam me-2"></i>Упаковка товара
+                </h4>
             </div>
             <div class="card-body">
                 {% if packing_data %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Как работает упаковка:</strong> Берется товар из неупакованных остатков (россыпь) и упаковывается в выбранные упаковки.
+                    Количество штук в упаковке умножается на количество упаковок.
+                </div>
+
                 <form method="POST" id="packingForm">
                     <div class="table-responsive">
-                        <table class="table table-bordered" id="packingTable">
-                            <thead>
+                        <table class="table table-bordered table-hover" id="packingTable">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Размер</th>
-                                    <th>Цвет</th>
-                                    <th>Артикул упаковки</th>
-                                    <th>Штук в упаковке</th>
-                                    <th>Макс. упаковок</th>
-                                    <th>Кол-во упаковок</th>
-                                    <th>Потребуется (шт)</th>
-                                    <!-- УБИРАЕМ СТОЛБЕЦ "Останется" -->
+                                    <th width="15%">Размер</th>
+                                    <th width="15%">Цвет</th>
+                                    <th width="10%">Доступно<br><small class="text-muted">(шт)</small></th>
+                                    <th width="15%">Артикул упаковки</th>
+                                    <th width="10%">Штук в упаковке</th>
+                                    <th width="10%">Макс. упаковок</th>
+                                    <th width="15%">Кол-во упаковок</th>
+                                    <th width="10%">Потребуется<br><small class="text-muted">(шт)</small></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for group in packing_data %}
                                 {% set variation = group.variation %}
-                                {% set group_id = variation.id %}
 
                                 <!-- Заголовок группы -->
-                                <tr class="table-group-header" data-group="{{ group_id }}">
+                                <tr class="table-group-header" data-group="{{ variation.id }}">
                                     <td colspan="8" class="bg-light fw-bold">
-                                        {{ variation.size or '—' }} / {{ variation.color or '—' }}
-                                        - Доступно: <span id="total_available_{{ group_id }}">{{ group.remaining_quantity }}</span> шт.
+                                        <i class="bi bi-tags me-2"></i>
+                                        {{ variation.size.name }} / {{ variation.color.name }}
+                                        - Доступно: <span id="total_available_{{ variation.id }}" class="text-success">{{ group.remaining_quantity }}</span> шт.
                                     </td>
                                 </tr>
 
                                 {% for package in group.packages %}
-                                <tr class="packing-row" data-group="{{ group_id }}" data-package-quantity="{{ package.package_quantity }}">
-                                    <td>{{ variation.size or '—' }}</td>
-                                    <td>{{ variation.color or '—' }}</td>
-                                    <td><code>{{ package.sku }}</code></td>
-                                    <td>{{ package.package_quantity }}</td>
-                                    <td class="fw-bold">
-                                        <span id="max_{{ group_id }}_{{ package.id }}">{{ group.remaining_quantity // package.package_quantity }}</span>
+                                <tr class="packing-row" data-group="{{ variation.id }}" data-package-quantity="{{ package.package_quantity }}">
+                                    <td class="align-middle">
+                                        {{ variation.size.name }}
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="color-badge" style="background-color: {{ get_color_hex(variation.color.name) }};"></span>
+                                        {{ variation.color.name }}
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <span class="fw-bold text-success" id="available_{{ variation.id }}_{{ package.id }}">
+                                            {{ group.remaining_quantity }}
+                                        </span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <code>{{ package.sku }}</code>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <span class="badge bg-info">{{ package.package_quantity }}</span>
+                                    </td>
+                                    <td class="text-center align-middle fw-bold">
+                                        <span id="max_{{ variation.id }}_{{ package.id }}">{{ group.remaining_quantity // package.package_quantity }}</span>
                                     </td>
                                     <td>
                                         <input type="number" class="form-control packing-input"
-                                               name="quantity_{{ group_id }}_{{ package.id }}"
-                                               id="input_{{ group_id }}_{{ package.id }}"
+                                               name="quantity_{{ variation.id }}_{{ package.id }}"
+                                               id="input_{{ variation.id }}_{{ package.id }}"
                                                value="0" min="0"
                                                max="{{ group.remaining_quantity // package.package_quantity }}"
                                                placeholder="0"
-                                               data-variation="{{ group_id }}"
+                                               data-variation="{{ variation.id }}"
                                                data-package="{{ package.id }}"
                                                data-package-qty="{{ package.package_quantity }}"
                                                oninput="updateQuantities(this)">
                                     </td>
-                                    <td class="text-info fw-bold">
-                                        <span id="required_{{ group_id }}_{{ package.id }}">0</span>
+                                    <td class="text-center align-middle">
+                                        <span class="fw-bold text-info" id="required_{{ variation.id }}_{{ package.id }}">0</span>
                                     </td>
-                                    <!-- УБИРАЕМ ЯЧЕЙКУ "Останется" -->
                                 </tr>
                                 {% endfor %}
                                 {% endfor %}
@@ -84,26 +104,46 @@
                         </table>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Комментарий</label>
-                        <textarea class="form-control" name="comment" rows="2"
-                                  placeholder="Комментарий к упаковке"></textarea>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="document_number" class="form-label">Номер документа упаковки</label>
+                                <input type="text" class="form-control" id="document_number" name="document_number"
+                                       placeholder="Например: УПАКОВКА-001">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="comment" class="form-label">Комментарий</label>
+                                <textarea class="form-control" id="comment" name="comment" rows="2"
+                                          placeholder="Комментарий к упаковке (необязательно)"></textarea>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('products.product_detail', product_id=product.id) }}" class="btn btn-secondary me-md-2">Отмена</a>
-                        <button type="submit" class="btn btn-warning">Упаковать товар</button>
+                        <a href="{{ url_for('products.product_detail', product_id=product.id) }}"
+                           class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-box-seam me-1"></i> Выполнить упаковку
+                        </button>
                     </div>
                 </form>
                 {% else %}
-                <div class="text-center py-4">
-                    <p class="text-muted">Нет товаров доступных для упаковки</p>
-                    <a href="{{ url_for('products.product_incoming', product_id=product.id) }}" class="btn btn-success me-2">
-                        <i class="bi bi-box-arrow-in-down"></i> Добавить приход товара
-                    </a>
-                    <a href="{{ url_for('products.product_detail', product_id=product.id) }}" class="btn btn-primary">
-                        <i class="bi bi-arrow-left"></i> Назад к товару
-                    </a>
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="bi bi-box-seam display-1 text-muted"></i>
+                    </div>
+                    <h4 class="text-muted">Нет товаров для упаковки</h4>
+                    <p class="text-muted">Для упаковки необходим товар в неупакованном виде (россыпь)</p>
+                    <div class="mt-3">
+                        <a href="{{ url_for('products.product_incoming', product_id=product.id) }}" class="btn btn-success me-2">
+                            <i class="bi bi-box-arrow-in-down"></i> Добавить приход товара
+                        </a>
+                        <a href="{{ url_for('products.product_detail', product_id=product.id) }}" class="btn btn-primary">
+                            <i class="bi bi-arrow-left"></i> Назад к товару
+                        </a>
+                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -111,34 +151,24 @@
     </div>
 </div>
 
+{% if packing_data %}
 <script>
 // Объект для хранения текущих количеств по группам
 let groupQuantities = {};
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    // Инициализируем объект количеств
+    // Инициализируем объект количеств для каждой группы
     const groups = document.querySelectorAll('.table-group-header');
     groups.forEach(group => {
         const groupId = group.getAttribute('data-group');
-        // Берем начальное количество из текста заголовка
-        const headerText = group.querySelector('td').textContent;
-        const match = headerText.match(/Доступно: (\d+) шт\./);
-        if (match) {
-            groupQuantities[groupId] = parseInt(match[1]);
-        } else {
-            // Если не нашли в заголовке, берем из первой строки
-            const firstRow = document.querySelector(`.packing-row[data-group="${groupId}"]`);
-            if (firstRow) {
-                const availableElement = firstRow.querySelector('[id^="available_"]');
-                if (availableElement) {
-                    groupQuantities[groupId] = parseInt(availableElement.textContent);
-                }
-            }
+        const availableElement = group.querySelector('[id^="total_available_"]');
+        if (availableElement) {
+            groupQuantities[groupId] = parseInt(availableElement.textContent);
         }
     });
 
-    console.log('Initial quantities:', groupQuantities); // Для отладки
+    console.log('Initial group quantities:', groupQuantities);
 });
 
 function updateQuantities(input) {
@@ -147,7 +177,7 @@ function updateQuantities(input) {
     const packageQty = parseInt(input.getAttribute('data-package-qty'));
     const quantity = parseInt(input.value) || 0;
 
-    console.log('Updating:', {variationId, packageId, packageQty, quantity}); // Для отладки
+    console.log('Updating:', {variationId, packageId, packageQty, quantity});
 
     // Рассчитываем требуемое количество штук
     const requiredUnits = quantity * packageQty;
@@ -167,7 +197,7 @@ function recalculateGroup(variationId) {
     let totalAvailable = groupQuantities[variationId] || 0;
     let totalUsed = 0;
 
-    console.log('Recalculating group:', variationId, 'Total available:', totalAvailable); // Для отладки
+    console.log('Recalculating group:', variationId, 'Total available:', totalAvailable);
 
     // Сначала считаем общее использованное количество
     inputs.forEach(input => {
@@ -176,11 +206,13 @@ function recalculateGroup(variationId) {
         totalUsed += quantity * packageQty;
     });
 
-    console.log('Total used:', totalUsed); // Для отладки
+    console.log('Total used:', totalUsed);
 
     // Обновляем общее доступное количество в заголовке группы
     const remainingTotal = totalAvailable - totalUsed;
     document.getElementById(`total_available_${variationId}`).textContent = remainingTotal;
+    document.getElementById(`total_available_${variationId}`).className =
+        remainingTotal >= 0 ? 'text-success' : 'text-danger';
 
     // Теперь обновляем каждую строку
     inputs.forEach(input => {
@@ -209,19 +241,21 @@ function recalculateGroup(variationId) {
 
         // Обновляем отображение доступного количества для этой строки
         document.getElementById(`available_${variationId}_${packageId}`).textContent = availableForThisRow;
-
-        console.log('Row updated:', {packageId, availableForThisRow, maxPackages}); // Для отладки
+        document.getElementById(`available_${variationId}_${packageId}`).className =
+            availableForThisRow >= 0 ? 'fw-bold text-success' : 'fw-bold text-danger';
     });
 }
 
 // Валидация формы перед отправкой
 document.getElementById('packingForm').addEventListener('submit', function(e) {
     let hasErrors = false;
+    let hasPacking = false;
     const inputs = document.querySelectorAll('.packing-input');
 
     inputs.forEach(input => {
         const quantity = parseInt(input.value) || 0;
         if (quantity > 0) {
+            hasPacking = true;
             const variationId = input.getAttribute('data-variation');
             const packageId = input.getAttribute('data-package');
             const packageQty = parseInt(input.getAttribute('data-package-qty'));
@@ -239,28 +273,68 @@ document.getElementById('packingForm').addEventListener('submit', function(e) {
         }
     });
 
+    if (!hasPacking) {
+        e.preventDefault();
+        alert('Пожалуйста, укажите количество упаковок для выполнения операции.');
+        return;
+    }
+
     if (hasErrors) {
         e.preventDefault();
         alert('Некоторые количества превышают доступные остатки. Пожалуйста, проверьте введенные данные.');
+    }
+});
+
+// Автоматический пересчет при изменении значений
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('packing-input')) {
+        // Небольшая задержка для избежания частых пересчетов
+        setTimeout(() => {
+            const variationId = e.target.getAttribute('data-variation');
+            recalculateGroup(variationId);
+        }, 100);
     }
 });
 </script>
 
 <style>
 .table-group-header {
-    background-color: #e9ecef !important;
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+}
+
+.table-group-header td {
+    border: none !important;
+    font-size: 1.1em;
 }
 
 .packing-row:hover {
-    background-color: #f8f9fa;
+    background-color: #f8f9fa !important;
+}
+
+.color-badge {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.packing-input:focus {
+    border-color: #ffc107;
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
 }
 
 .is-invalid {
     border-color: #dc3545 !important;
 }
 
+.packing-input:invalid {
+    border-color: #dc3545;
+}
+
 .table th {
-    background-color: #f8f9fa;
     vertical-align: middle;
     text-align: center;
 }
@@ -268,5 +342,10 @@ document.getElementById('packingForm').addEventListener('submit', function(e) {
 .table td {
     vertical-align: middle;
 }
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
 </style>
+{% endif %}
 {% endblock %}

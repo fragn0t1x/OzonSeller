@@ -1,8 +1,8 @@
-# app/controllers/categories.py
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from app import db
 from app.models.category import ProductCategory
-from app.models import Product  # Добавляем импорт Product
+from app.models import Product
+from datetime import datetime  # Добавляем импорт
 
 bp = Blueprint('categories', __name__)
 
@@ -10,7 +10,9 @@ bp = Blueprint('categories', __name__)
 def categories_list():
     """Список всех категорий"""
     categories = ProductCategory.query.order_by(ProductCategory.name).all()
-    return render_template('categories/list.html', categories=categories)
+    return render_template('categories/list.html',
+                         categories=categories,
+                         now=datetime.now())  # Добавляем now
 
 @bp.route('/add', methods=['GET', 'POST'])
 def add_category():
@@ -20,7 +22,6 @@ def add_category():
             name = request.form['name'].strip()
             description = request.form.get('description', '').strip()
 
-            # Проверяем, существует ли категория
             existing_category = ProductCategory.query.filter_by(name=name).first()
             if existing_category:
                 flash('Категория с таким названием уже существует', 'warning')
@@ -41,7 +42,8 @@ def add_category():
             db.session.rollback()
             flash(f'Ошибка при добавлении категории: {str(e)}', 'danger')
 
-    return render_template('categories/add.html')
+    return render_template('categories/add.html',
+                         now=datetime.now())  # Добавляем now
 
 @bp.route('/<int:category_id>/edit', methods=['GET', 'POST'])
 def edit_category(category_id):
@@ -61,7 +63,9 @@ def edit_category(category_id):
             db.session.rollback()
             flash(f'Ошибка при обновлении категории: {str(e)}', 'danger')
 
-    return render_template('categories/edit.html', category=category)
+    return render_template('categories/edit.html',
+                         category=category,
+                         now=datetime.now())  # Добавляем now
 
 @bp.route('/<int:category_id>/delete', methods=['POST'])
 def delete_category(category_id):
@@ -69,7 +73,6 @@ def delete_category(category_id):
     category = ProductCategory.query.get_or_404(category_id)
 
     try:
-        # Проверяем, есть ли товары в этой категории
         products_count = Product.query.filter_by(category_id=category_id).count()
         if products_count > 0:
             flash('Нельзя удалить категорию, в которой есть товары', 'danger')

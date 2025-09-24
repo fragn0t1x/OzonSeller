@@ -1,4 +1,3 @@
-<!-- app/templates/products/detail.html - Исправленная версия -->
 {% extends "base.html" %}
 
 {% block title %}{{ product.name }} - Детальная информация{% endblock %}
@@ -31,13 +30,73 @@
                 <table class="table table-borderless">
                     <tr>
                         <th width="120">Категория:</th>
-                        <td>{{ product.category.name if product.category else 'Не указана' }}</td>
+                        <td>
+                            {% if product.category %}
+                                <span class="badge bg-secondary">{{ product.category.name }}</span>
+                            {% else %}
+                                <span class="text-muted">Не указана</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     <tr>
                         <th>Описание:</th>
                         <td>{{ product.description or '—' }}</td>
                     </tr>
+                    <tr>
+                        <th>Дата создания:</th>
+                        <td>{{ product.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    </tr>
+                    <tr>
+                        <th>Вариаций:</th>
+                        <td><span class="badge bg-primary">{{ product.variations|length }}</span></td>
+                    </tr>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Общая статистика</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="border-end">
+                            <h3 class="text-success mb-1">
+                                {% set total_unpacked = namespace(value=0) %}
+                                {% for group in size_color_groups %}
+                                    {% set total_unpacked.value = total_unpacked.value + group.unpacked_quantity %}
+                                {% endfor %}
+                                {{ total_unpacked.value }}
+                            </h3>
+                            <small class="text-muted">Неупаковано (шт)</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border-end">
+                            <h3 class="text-warning mb-1">
+                                {% set total_packages = namespace(value=0) %}
+                                {% set total_packed_units = namespace(value=0) %}
+                                {% for group in size_color_groups %}
+                                    {% for package in group.packages %}
+                                        {% set total_packages.value = total_packages.value + package.quantity %}
+                                        {% set total_packed_units.value = total_packed_units.value + (package.quantity * package.package.package_quantity) %}
+                                    {% endfor %}
+                                {% endfor %}
+                                {{ total_packages.value }}
+                            </h3>
+                            <small class="text-muted">Упаковано (уп)</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div>
+                            <h3 class="text-primary mb-1">{{ total_unpacked.value + total_packed_units.value }}</h3>
+                            <small class="text-muted">Всего (шт)</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -45,7 +104,7 @@
 
 <div class="card">
     <div class="card-header bg-light">
-        <h5 class="card-title mb-0">Остатки товара</h5>
+        <h5 class="card-title mb-0">Остатки товара по вариациям</h5>
     </div>
     <div class="card-body p-0">
         {% if size_color_groups %}
@@ -53,126 +112,98 @@
                 <table class="table table-bordered mb-0">
                     <thead class="table-header-fixed">
                         <tr>
+                            <th width="15%">Размер</th>
                             <th width="15%">Цвет</th>
-                            <th width="15%">Общее кол-во<br><small class="text-muted">(шт.)</small></th>
-                            <th width="15%">Неупакованные<br><small class="text-muted">(шт.)</small></th>
-                            <th width="35%">Упакованные</th>
-                            <th width="20%">Прогресс упаковки</th>
+                            <th width="15%">Неупаковано<br><small class="text-muted">(шт)</small></th>
+                            <th width="40%">Упакованные варианты</th>
+                            <th width="15%">Прогресс упаковки</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% set grouped_by_size = {} %}
                         {% for group in size_color_groups %}
-                            {% set size_key = group.size or 'Без размера' %}
-                            {% if size_key not in grouped_by_size %}
-                                {% set _ = grouped_by_size.update({size_key: []}) %}
-                            {% endif %}
-                            {% set _ = grouped_by_size[size_key].append(group) %}
-                        {% endfor %}
-
-                        {% for size, groups in grouped_by_size.items() %}
-                            <tr class="size-group-header">
-                                <td colspan="5" class="text-white fw-bold fs-5">
-                                    <i class="bi bi-tag-fill me-2"></i>Размер: {{ size }}
-                                    <small class="opacity-90 ms-2">• {{ groups|length }} цветов</small>
-                                </td>
-                            </tr>
-
-                            {% for group in groups %}
-                            <tr class="color-row {% if loop.index % 2 == 0 %}table-light{% else %}table-default{% endif %}">
-                                <td class="align-middle">
-                                    <span class="color-badge" style="background-color: {{ get_color_hex(group.color) }}; border: 2px solid #dee2e6;"></span>
-                                    <strong>{{ group.color or '—' }}</strong>
-                                </td>
-
-                                <td class="text-center align-middle">
-                                    {% set packed_quantities = [] %}
-                                    {% for package in group.packages %}
-                                        {% if package.quantity > 0 %}
-                                            {% set _ = packed_quantities.append(package.quantity * package.package_quantity) %}
-                                        {% endif %}
-                                    {% endfor %}
-
-                                    {% set total_packed = packed_quantities | sum %}
-                                    {% set total_units = group.unpacked_quantity + total_packed %}
-
-                                    <span class="fw-bold fs-5 text-primary">{{ total_units }}</span>
-                                </td>
-
-                                <td class="text-center align-middle">
-                                    <span class="fw-bold {% if group.unpacked_quantity > 0 %}text-success{% else %}text-muted{% endif %}">
-                                        {{ group.unpacked_quantity }}
-                                    </span>
-                                </td>
-
-                                <td>
-                                    {% set has_packed = false %}
-                                    {% for package in group.packages %}
-                                        {% if package.quantity > 0 %}
-                                            {% set has_packed = true %}
-                                            <div class="packed-item mb-2 p-2 border rounded bg-light">
-                                                <div class="row align-items-center">
-                                                    <div class="col-5">
-                                                        <strong>Артикул:</strong><br>
-                                                        <code class="small">{{ package.sku }}</code>
-                                                    </div>
-                                                    <div class="col-3">
-                                                        <strong>В упаковке:</strong><br>
-                                                        <span class="text-info">{{ package.package_quantity }} шт.</span>
-                                                    </div>
-                                                    <div class="col-4">
-                                                        <strong>Упаковано:</strong><br>
-                                                        <span class="fw-bold text-primary">
-                                                            {{ package.quantity }} уп.
-                                                        </span>
-                                                    </div>
+                        <tr class="variation-row {% if loop.index % 2 == 0 %}table-light{% endif %}">
+                            <td class="align-middle">
+                                <strong>{{ group.size }}</strong>
+                            </td>
+                            <td class="align-middle">
+                                <span class="color-badge" style="background-color: {{ get_color_hex(group.color) }};"></span>
+                                <strong>{{ group.color }}</strong>
+                            </td>
+                            <td class="text-center align-middle">
+                                <span class="fw-bold fs-5 {% if group.unpacked_quantity > 0 %}text-success{% else %}text-muted{% endif %}">
+                                    {{ group.unpacked_quantity }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if group.packages %}
+                                    {% for package_data in group.packages %}
+                                        {% if package_data.quantity > 0 %}
+                                        <div class="packed-item mb-2 p-2 border rounded bg-light">
+                                            <div class="row align-items-center">
+                                                <div class="col-4">
+                                                    <strong>Артикул:</strong><br>
+                                                    <code class="small">{{ package_data.package.sku }}</code>
+                                                </div>
+                                                <div class="col-3">
+                                                    <strong>В упаковке:</strong><br>
+                                                    <span class="text-info">{{ package_data.package.package_quantity }} шт.</span>
+                                                </div>
+                                                <div class="col-3">
+                                                    <strong>Упаковано:</strong><br>
+                                                    <span class="fw-bold text-primary">
+                                                        {{ package_data.quantity }} уп.
+                                                    </span>
+                                                </div>
+                                                <div class="col-2">
+                                                    <strong>Всего:</strong><br>
+                                                    <span class="fw-bold text-success">
+                                                        {{ package_data.quantity * package_data.package.package_quantity }} шт.
+                                                    </span>
                                                 </div>
                                             </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <!-- УБИРАЕМ ПРОЧЕРК ЕСЛИ ЕСТЬ УПАКОВАННЫЕ -->
-                                </td>
-
-                                <td class="text-center align-middle">
-                                    {% set packed_quantities = [] %}
-                                    {% for package in group.packages %}
-                                        {% if package.quantity > 0 %}
-                                            {% set _ = packed_quantities.append(package.quantity * package.package_quantity) %}
-                                        {% endif %}
-                                    {% endfor %}
-
-                                    {% set total_packed = packed_quantities | sum %}
-                                    {% set total_units = group.unpacked_quantity + total_packed %}
-
-                                    {% if total_units > 0 %}
-                                        {% set packing_percentage = (total_packed / total_units * 100)|round(1) %}
-                                        <div class="progress-container">
-                                            <div class="progress" style="height: 20px;">
-                                                <div class="progress-bar bg-success"
-                                                     style="width: {{ packing_percentage }}%;"
-                                                     role="progressbar"
-                                                     aria-valuenow="{{ packing_percentage }}"
-                                                     aria-valuemin="0"
-                                                     aria-valuemax="100">
-                                                    {{ packing_percentage|int }}%
-                                                </div>
-                                            </div>
-                                            <small class="text-muted">
-                                                {{ total_packed }} из {{ total_units }} шт.
-                                            </small>
                                         </div>
-                                    {% else %}
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if group.packages|selectattr('quantity', 'gt', 0)|list|length == 0 %}
                                         <span class="text-muted">—</span>
                                     {% endif %}
-                                </td>
-                            </tr>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center align-middle">
+                                {% set total_packed_units = namespace(value=0) %}
+                                {% for package_data in group.packages %}
+                                    {% if package_data.quantity > 0 %}
+                                        {% set total_packed_units.value = total_packed_units.value + (package_data.quantity * package_data.package.package_quantity) %}
+                                    {% endif %}
+                                {% endfor %}
 
-                            {% if not loop.last %}
-                                <tr class="color-separator">
-                                    <td colspan="5" style="height: 2px; background-color: #e9ecef;"></td>
-                                </tr>
-                            {% endif %}
-                            {% endfor %}
+                                {% set total_units = group.unpacked_quantity + total_packed_units.value %}
+
+                                {% if total_units > 0 %}
+                                    {% set packing_percentage = (total_packed_units.value / total_units * 100)|round(1) %}
+                                    <div class="progress-container">
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-success"
+                                                 style="width: {{ packing_percentage }}%;"
+                                                 role="progressbar"
+                                                 aria-valuenow="{{ packing_percentage }}"
+                                                 aria-valuemin="0"
+                                                 aria-valuemax="100">
+                                                {{ packing_percentage|int }}%
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">
+                                            {{ total_packed_units.value }} из {{ total_units }} шт.
+                                        </small>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -180,49 +211,25 @@
 
         {% else %}
             <div class="text-center py-4">
-                <p class="text-muted">Товарные позиции не найдены</p>
-                <a href="{{ url_for('products.add_product') }}" class="btn btn-primary">Добавить позиции</a>
+                <p class="text-muted">Товарные вариации не найдены</p>
+                <a href="{{ url_for('products.product_incoming', product_id=product.id) }}" class="btn btn-success me-2">
+                    <i class="bi bi-box-arrow-in-down"></i> Добавить приход
+                </a>
             </div>
         {% endif %}
     </div>
 </div>
 
 <style>
-/* Фиксированный заголовок таблицы */
 .table-header-fixed {
     position: sticky;
     top: 0;
     z-index: 10;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.table-responsive {
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-.size-group-header td {
-    background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%) !important;
-    border: none !important;
-    position: relative;
-    position: sticky;
-    top: 45px; /* Высота заголовка таблицы */
-    z-index: 5;
-}
-
-.size-group-header td::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: rgba(255,255,255,0.3);
-}
-
-.color-row:hover {
-    background-color: #fff5f5 !important;
+.variation-row:hover {
+    background-color: #f8f9fa !important;
 }
 
 .color-badge {
@@ -231,24 +238,35 @@
     height: 20px;
     border-radius: 50%;
     margin-right: 10px;
+    border: 2px solid #dee2e6;
     vertical-align: middle;
 }
 
 .packed-item {
-    background: #fffaf0;
-    border-left: 4px solid #ff7e5f !important;
-    border-radius: 6px;
+    background: #f8f9fa;
+    border-left: 4px solid #28a745 !important;
     transition: all 0.3s ease;
 }
 
 .packed-item:hover {
-    background: #fff5e6;
+    background: #e9ecef;
     transform: translateX(2px);
 }
 
-.color-separator td {
-    padding: 0 !important;
+.progress {
     background-color: #e9ecef;
+    border-radius: 5px;
+}
+
+.progress-bar {
+    border-radius: 5px;
+    font-size: 0.8rem;
+    line-height: 20px;
+    font-weight: 500;
+}
+
+.fs-5 {
+    font-size: 1.25rem !important;
 }
 
 .table th {
@@ -259,42 +277,6 @@
 
 .table td {
     vertical-align: middle;
-}
-
-.fs-5 {
-    font-size: 1.25rem !important;
-}
-
-.progress-container {
-    min-width: 100px;
-}
-
-.progress {
-    background-color: #e9ecef;
-    border-radius: 5px;
-    margin-bottom: 5px;
-}
-
-.progress-bar {
-    border-radius: 5px;
-    font-size: 0.8rem;
-    line-height: 20px;
-    font-weight: 500;
-}
-
-.table-responsive {
-    font-size: 0.9rem;
-}
-
-.packed-item .row {
-    margin: 0 -5px;
-}
-
-.packed-item .col-2,
-.packed-item .col-3,
-.packed-item .col-4,
-.packed-item .col-5 {
-    padding: 0 5px;
 }
 </style>
 {% endblock %}

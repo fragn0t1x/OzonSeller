@@ -1,4 +1,3 @@
-<!--app/templates/categories/add.html-->
 {% extends "base.html" %}
 
 {% block title %}Добавить категорию - Warehouse{% endblock %}
@@ -15,18 +14,26 @@
                     <div class="mb-3">
                         <label for="name" class="form-label">Название категории *</label>
                         <input type="text" class="form-control" id="name" name="name" required
-                               placeholder="Например: Носки, Футболки, Обувь">
+                               placeholder="Например: Носки, Футболки, Обувь"
+                               maxlength="100">
+                        <div class="form-text">Название должно быть уникальным</div>
                     </div>
 
                     <div class="mb-3">
                         <label for="description" class="form-label">Описание</label>
                         <textarea class="form-control" id="description" name="description" rows="3"
-                                  placeholder="Описание категории (необязательно)"></textarea>
+                                  placeholder="Описание категории (необязательно)"
+                                  maxlength="500"></textarea>
+                        <div class="form-text">Максимум 500 символов</div>
                     </div>
 
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('categories.categories_list') }}" class="btn btn-secondary me-md-2">Отмена</a>
-                        <button type="submit" class="btn btn-primary">Сохранить категорию</button>
+                        <a href="{{ url_for('categories.categories_list') }}" class="btn btn-secondary me-md-2">
+                            <i class="bi bi-arrow-left"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Сохранить категорию
+                        </button>
                     </div>
                 </form>
             </div>

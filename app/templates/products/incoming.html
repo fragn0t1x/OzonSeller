@@ -1,4 +1,3 @@
-<!-- app/templates/products/incoming.html -->
 {% extends "base.html" %}
 
 {% block title %}Приход товара - {{ product.name }}{% endblock %}
@@ -20,53 +19,209 @@
     <div class="col-md-10">
         <div class="card">
             <div class="card-header bg-success text-white">
-                <h4 class="card-title mb-0">Добавление прихода товара</h4>
+                <h4 class="card-title mb-0">
+                    <i class="bi bi-box-arrow-in-down me-2"></i>Добавление прихода товара
+                </h4>
             </div>
             <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Внимание:</strong> Приход товара осуществляется только в неупакованные вариации (россыпь).
+                    Для упакованного товара используйте функцию упаковки.
+                </div>
+
                 <form method="POST">
                     <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead>
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Размер</th>
-                                    <th>Цвет</th>
-                                    <th>Текущее кол-во (шт)</th>
-                                    <th>Кол-во штук для прихода</th>
+                                    <th width="20%">Размер</th>
+                                    <th width="20%">Цвет</th>
+                                    <th width="20%">Текущее кол-во<br><small class="text-muted">(шт)</small></th>
+                                    <th width="30%">Кол-во для прихода<br><small class="text-muted">(шт)</small></th>
+                                    <th width="10%">Будет</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for variation in variations %}
+                                {% for variation, stock in variations_with_stock %}
                                 <tr>
-                                    <td class="fw-bold">{{ variation.size or '—' }}</td>
-                                    <td>{{ variation.color or '—' }}</td>
-                                    <td class="fw-bold {% if variation.quantity > 0 %}text-success{% else %}text-muted{% endif %}">
-                                        {{ variation.quantity }}
+                                    <td class="fw-bold align-middle">
+                                        {{ variation.size.name }}
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="color-badge" style="background-color: {{ get_color_hex(variation.color.name) }};"></span>
+                                        {{ variation.color.name }}
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <span class="fw-bold {% if stock.quantity_pieces > 0 %}text-success{% else %}text-muted{% endif %}">
+                                            {{ stock.quantity_pieces }}
+                                        </span>
                                     </td>
                                     <td>
-                                        <input type="number" class="form-control"
-                                               name="quantity_{{ variation.id }}"
-                                               value="0" min="0" placeholder="0"
-                                               required>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control incoming-quantity"
+                                                   name="quantity_{{ variation.id }}"
+                                                   value="0" min="0"
+                                                   placeholder="0"
+                                                   data-current="{{ stock.quantity_pieces }}"
+                                                   onchange="updateTotal(this)">
+                                            <span class="input-group-text">шт.</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <span class="fw-bold text-primary" id="total_{{ variation.id }}">
+                                            {{ stock.quantity_pieces }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="bi bi-exclamation-triangle display-4"></i>
+                                            <h5>Нет вариаций для прихода</h5>
+                                            <p>Сначала создайте вариации товара (размеры и цвета)</p>
+                                            <a href="{{ url_for('products.product_detail', product_id=product.id) }}"
+                                               class="btn btn-primary">Вернуться к товару</a>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
+                            {% if variations_with_stock %}
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="2" class="text-end fw-bold">Итого приход:</td>
+                                    <td class="text-center fw-bold" id="current-total">
+                                        {% set total_current = namespace(value=0) %}
+                                        {% for variation, stock in variations_with_stock %}
+                                            {% set total_current.value = total_current.value + stock.quantity_pieces %}
+                                        {% endfor %}
+                                        {{ total_current.value }} шт.
+                                    </td>
+                                    <td class="text-center fw-bold text-success" id="incoming-total">0 шт.</td>
+                                    <td class="text-center fw-bold text-primary" id="final-total">
+                                        {{ total_current.value }} шт.
+                                    </td>
+                                </tr>
+                            </tfoot>
+                            {% endif %}
                         </table>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Комментарий</label>
-                        <textarea class="form-control" name="comment" rows="2"
-                                  placeholder="Комментарий к приходу"></textarea>
+                    {% if variations_with_stock %}
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="document_number" class="form-label">Номер документа</label>
+                                <input type="text" class="form-control" id="document_number" name="document_number"
+                                       placeholder="Например: ПРИХОД-001">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="comment" class="form-label">Комментарий</label>
+                                <textarea class="form-control" id="comment" name="comment" rows="2"
+                                          placeholder="Комментарий к приходу (необязательно)"></textarea>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('products.product_detail', product_id=product.id) }}" class="btn btn-secondary me-md-2">Отмена</a>
-                        <button type="submit" class="btn btn-success">Добавить приход</button>
+                        <a href="{{ url_for('products.product_detail', product_id=product.id) }}"
+                           class="btn btn-secondary me-md-2">Отмена</a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg me-1"></i> Добавить приход
+                        </button>
                     </div>
+                    {% endif %}
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+{% if variations_with_stock %}
+<script>
+function updateTotal(input) {
+    const variationId = input.name.replace('quantity_', '');
+    const currentQty = parseInt(input.getAttribute('data-current'));
+    const incomingQty = parseInt(input.value) || 0;
+    const totalQty = currentQty + incomingQty;
+
+    // Обновляем итог для строки
+    document.getElementById(`total_${variationId}`).textContent = totalQty;
+
+    // Обновляем общие итоги
+    updateGrandTotals();
+}
+
+function updateGrandTotals() {
+    let totalIncoming = 0;
+    let totalCurrent = 0;
+
+    // Считаем общие суммы
+    document.querySelectorAll('.incoming-quantity').forEach(input => {
+        const currentQty = parseInt(input.getAttribute('data-current'));
+        const incomingQty = parseInt(input.value) || 0;
+
+        totalCurrent += currentQty;
+        totalIncoming += incomingQty;
+    });
+
+    // Обновляем отображение
+    document.getElementById('current-total').textContent = totalCurrent + ' шт.';
+    document.getElementById('incoming-total').textContent = totalIncoming + ' шт.';
+    document.getElementById('incoming-total').className = totalIncoming > 0 ?
+        'text-center fw-bold text-success' : 'text-center fw-bold text-muted';
+    document.getElementById('final-total').textContent = (totalCurrent + totalIncoming) + ' шт.';
+}
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    // Добавляем обработчики для всех полей ввода
+    document.querySelectorAll('.incoming-quantity').forEach(input => {
+        input.addEventListener('input', function() {
+            updateTotal(this);
+        });
+    });
+
+    // Валидация формы
+    document.querySelector('form').addEventListener('submit', function(e) {
+        let hasIncoming = false;
+        document.querySelectorAll('.incoming-quantity').forEach(input => {
+            if (parseInt(input.value) > 0) {
+                hasIncoming = true;
+            }
+        });
+
+        if (!hasIncoming) {
+            e.preventDefault();
+            alert('Пожалуйста, укажите количество товара для прихода хотя бы в одной вариации.');
+        }
+    });
+});
+</script>
+
+<style>
+.color-badge {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.incoming-quantity:focus {
+    border-color: #198754;
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+.table tfoot {
+    font-size: 1.1em;
+}
+</style>
+{% endif %}
 {% endblock %}

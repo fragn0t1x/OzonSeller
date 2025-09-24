@@ -1,13 +1,13 @@
-# app/models/shipment.py
 from app import db
 from datetime import datetime
+
 
 class Shipment(db.Model):
     __tablename__ = 'shipments'
 
     id = db.Column(db.Integer, primary_key=True)
     shipment_number = db.Column(db.String(100), unique=True, nullable=False)
-    status = db.Column(db.String(50), default='draft')  # draft, preparing, sent, delivered
+    status = db.Column(db.String(50), default='preparing')  # preparing, sent, delivered, cancelled
     shipment_date = db.Column(db.DateTime)
     expected_delivery_date = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -18,12 +18,23 @@ class Shipment(db.Model):
     def __repr__(self):
         return f'<Shipment {self.shipment_number}>'
 
+    @property
+    def total_packages(self):
+        """Общее количество упаковок в отправке"""
+        return sum(item.quantity for item in self.items)
+
+    @property
+    def total_units(self):
+        """Общее количество штук в отправке"""
+        return sum(item.quantity * item.package.package_quantity for item in self.items)
+
+
 class ShipmentItem(db.Model):
     __tablename__ = 'shipment_items'
 
     id = db.Column(db.Integer, primary_key=True)
     shipment_id = db.Column(db.Integer, db.ForeignKey('shipments.id', ondelete='CASCADE'), nullable=False)
-    package_id = db.Column(db.Integer, db.ForeignKey('product_packages.id', ondelete='CASCADE'), nullable=False)  # Меняем на package_id
+    package_id = db.Column(db.Integer, db.ForeignKey('product_packages.id', ondelete='CASCADE'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -34,4 +45,9 @@ class ShipmentItem(db.Model):
     )
 
     def __repr__(self):
-        return f'<ShipmentItem {self.quantity}>'
+        return f'<ShipmentItem {self.quantity} уп.>'
+
+    @property
+    def total_units(self):
+        """Общее количество штук в этой позиции"""
+        return self.quantity * self.package.package_quantity
