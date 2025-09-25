@@ -1,10 +1,11 @@
+# app/controllers/shipments.py
 from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app
 from app import db
-from app.models import Shipment, ShipmentItem, ProductPackage, StockPackaged, ProductVariation, Product, Size, Color
+from app.models import Shipment, ShipmentItem, ProductPackage, StockPackaged, ProductVariation, Product
+from app.models.category import CategorySize, CategoryColor  # Измененный импорт
 from datetime import datetime, timedelta
 
 bp = Blueprint('shipments', __name__)
-
 
 @bp.route('/')
 def shipments_list():
@@ -23,21 +24,30 @@ def shipments_list():
                            now=datetime.now())
 
 
+
 @bp.route('/create', methods=['GET', 'POST'])
 def create_shipment():
     """Создание новой отправки"""
     # Ищем упакованные товары с остатками > 0
     packages_with_stock = db.session.query(
         ProductPackage,
-        StockPackaged
+        StockPackaged,
+        CategorySize,  # Добавляем
+        CategoryColor  # Добавляем
     ).join(
         StockPackaged, ProductPackage.id == StockPackaged.package_id
+    ).join(
+        ProductVariation, ProductPackage.variation_id == ProductVariation.id
+    ).join(
+        CategorySize, ProductVariation.size_id == CategorySize.id  # Правильное соединение
+    ).join(
+        CategoryColor, ProductVariation.color_id == CategoryColor.id  # Правильное соединение
+    ).join(
+        Product, ProductVariation.product_id == Product.id
     ).filter(
         StockPackaged.quantity_packages > 0
     ).options(
-        db.joinedload(ProductPackage.variation).joinedload(ProductVariation.product),
-        db.joinedload(ProductPackage.variation).joinedload(ProductVariation.size),
-        db.joinedload(ProductPackage.variation).joinedload(ProductVariation.color)
+        db.joinedload(ProductPackage.variation).joinedload(ProductVariation.product)
     ).all()
 
     if request.method == 'POST':

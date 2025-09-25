@@ -1,13 +1,11 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app
+# app/controllers/products.py
+from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app, jsonify
 from app import db
 from app.models import Product, ProductVariation, ProductPackage, StockUnpackaged, StockPackaged
-from app.models.category import ProductCategory
-from app.models.size import Size
-from app.models.color import Color
+from app.models.category import ProductCategory, CategorySize, CategoryColor  # Измененный импорт
 from datetime import datetime
 
 bp = Blueprint('products', __name__)
-
 
 @bp.route('/')
 def products_list():
@@ -25,13 +23,10 @@ def products_list():
                            products=products,
                            now=datetime.now())
 
-
 @bp.route('/add', methods=['GET', 'POST'])
 def add_product():
     """Добавление нового товара с новой архитектурой"""
     categories = ProductCategory.query.order_by(ProductCategory.name).all()
-    sizes = Size.query.order_by(Size.name).all()
-    colors = Color.query.order_by(Color.name).all()
 
     if request.method == 'POST':
         try:
@@ -112,22 +107,26 @@ def add_product():
 
     return render_template('products/add.html',
                            categories=categories,
-                           sizes=sizes,
-                           colors=colors,
                            now=datetime.now())
 
-
+# app/controllers/products.py - нужно обновить product_detail
 @bp.route('/<int:product_id>')
 def product_detail(product_id):
-    """Детальная информация о товаре с новой архитектурой"""
+    """Детальная информация о товаре"""
     product = Product.query.get_or_404(product_id)
 
     # Получаем все вариации этого товара с остатками
     variations_with_stock = db.session.query(
         ProductVariation,
-        StockUnpackaged
+        StockUnpackaged,
+        CategorySize,  # Добавляем явную загрузку размеров
+        CategoryColor  # Добавляем явную загрузку цветов
     ).join(
         StockUnpackaged, ProductVariation.id == StockUnpackaged.variation_id
+    ).join(
+        CategorySize, ProductVariation.size_id == CategorySize.id  # Правильное соединение
+    ).join(
+        CategoryColor, ProductVariation.color_id == CategoryColor.id  # Правильное соединение
     ).filter(
         ProductVariation.product_id == product_id
     ).all()
@@ -135,12 +134,12 @@ def product_detail(product_id):
     # Группируем данные для отображения
     size_color_groups = {}
 
-    for variation, stock in variations_with_stock:
-        key = (variation.size.name, variation.color.name)
+    for variation, stock, size, color in variations_with_stock:  # Обновляем распаковку
+        key = (size.name, color.name)  # Используем name из связанных таблиц
         if key not in size_color_groups:
             size_color_groups[key] = {
-                'size': variation.size.name,
-                'color': variation.color.name,
+                'size': size.name,
+                'color': color.name,
                 'unpacked_quantity': stock.quantity_pieces,
                 'packages': []
             }
@@ -165,7 +164,6 @@ def product_detail(product_id):
                            product=product,
                            size_color_groups=list(size_color_groups.values()),
                            now=datetime.now())
-
 
 
 @bp.route('/<int:product_id>/incoming', methods=['GET', 'POST'])
@@ -315,3 +313,116 @@ def delete_product(product_id):
         flash(f'Ошибка при удалении товара: {str(e)}', 'danger')
 
     return redirect(url_for('products.products_list'))
+
+
+@bp.route('/get_category_attributes/<int:category_id>')
+def get_category_attributes(category_id):
+    """Получение размеров, цветов и вариантов упаковки категории"""
+    category = ProductCategory.query.get_or_404(category_id)
+
+    sizes = [{'id': size.id, 'name': size.name, 'description': size.description}
+             for size in category.sizes]
+
+    colors = [{'id': color.id, 'name': color.name, 'hex_code': color.hex_code}
+              for color in category.colors]
+
+    # Добавляем варианты упаковки
+    packaging_options = []
+    for packaging in category.packaging_options:
+        packaging_options.append({
+            'size_id': packaging.size_id,
+            'size_name': packaging.size.name,
+            'color_id': packaging.color_id,
+            'color_name': packaging.color.name,
+            'package_quantity': packaging.package_quantity
+        })
+
+    return jsonify({
+        'sizes': sizes,
+        'colors': colors,
+        'packaging_options': packaging_options
+    })
+
+## app/controllers/products.py - новый метод add_product_v2
+@bp.route('/add_v2', methods=['GET', 'POST'])
+def add_product_v2():
+    """Новая версия добавления товара с тремя блоками чекпоинтов"""
+    categories = ProductCategory.query.order_by(ProductCategory.name).all()
+
+    if request.method == 'POST':
+        try:
+            # Создаем основной товар
+            product = Product(
+                name=request.form['name'],
+                category_id=request.form['category_id'],
+                description=request.form.get('description', '')
+            )
+            db.session.add(product)
+            db.session.flush()
+
+            # 1. Создаем НЕУПАКОВАННЫЕ вариации (все комбинации размер-цвет)
+            selected_size_ids = request.form.getlist('size_ids[]')
+            selected_color_ids = request.form.getlist('color_ids[]')
+
+            for size_id in selected_size_ids:
+                for color_id in selected_color_ids:
+                    if size_id and color_id:
+                        variation = ProductVariation(
+                            product_id=product.id,
+                            size_id=int(size_id),
+                            color_id=int(color_id)
+                        )
+                        db.session.add(variation)
+                        db.session.flush()
+
+                        stock_unpackaged = StockUnpackaged(
+                            variation_id=variation.id,
+                            quantity_pieces=0
+                        )
+                        db.session.add(stock_unpackaged)
+
+            # 2. Создаем УПАКОВАННЫЕ вариации из автоматически сгенерированных
+            package_size_ids = request.form.getlist('package_size_ids[]')
+            package_color_ids = request.form.getlist('package_color_ids[]')
+            package_quantities = request.form.getlist('package_quantities[]')
+            skus = request.form.getlist('skus[]')
+
+            for i, (size_id, color_id, package_qty, sku) in enumerate(zip(
+                    package_size_ids, package_color_ids, package_quantities, skus)):
+
+                if not sku.strip():
+                    continue
+
+                # Находим соответствующую вариацию
+                variation = ProductVariation.query.filter_by(
+                    product_id=product.id,
+                    size_id=int(size_id),
+                    color_id=int(color_id)
+                ).first()
+
+                if variation:
+                    package = ProductPackage(
+                        variation_id=variation.id,
+                        package_quantity=int(package_qty),
+                        sku=sku.strip()
+                    )
+                    db.session.add(package)
+                    db.session.flush()
+
+                    stock_packaged = StockPackaged(
+                        package_id=package.id,
+                        quantity_packages=0
+                    )
+                    db.session.add(stock_packaged)
+
+            db.session.commit()
+            flash('Товар успешно добавлен!', 'success')
+            return redirect(url_for('products.products_list'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ошибка при добавлении товара: {str(e)}', 'danger')
+
+    return render_template('products/add_v2.html',
+                           categories=categories,
+                           now=datetime.now())

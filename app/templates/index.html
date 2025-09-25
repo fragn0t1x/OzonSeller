@@ -1,3 +1,4 @@
+<!--app/templates/index.html-->
 {% extends "base.html" %}
 
 {% block title %}Главная - Warehouse{% endblock %}
@@ -70,7 +71,7 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2 d-md-flex">
-                    <a href="{{ url_for('products.add_product') }}" class="btn btn-primary me-md-2">
+                    <a href="{{ url_for('products.add_product_v2') }}" class="btn btn-primary">
                         <i class="bi bi-plus-circle"></i> Добавить товар
                     </a>
                     <a href="{{ url_for('categories.add_category') }}" class="btn btn-outline-secondary me-md-2">

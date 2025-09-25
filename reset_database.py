@@ -1,40 +1,29 @@
-from app import create_app, db
-from sqlalchemy import text
+# reset_database.py
+import os
+import sys
+from pathlib import Path
 
 
 def reset_database():
-    app = create_app()
+    # Удаляем файл базы данных
+    db_path = Path('instance/ozon_warehouse')
+    if db_path.exists():
+        db_path.unlink()
+        print("✓ База данных удалена")
 
-    with app.app_context():
-        print("Полный сброс базы данных...")
+    # Удаляем папку миграций
+    migrations_path = Path('migrations')
+    if migrations_path.exists():
+        import shutil
+        shutil.rmtree(migrations_path)
+        print("✓ Папка миграций удалена")
 
-        # Отключаем внешние ключи для PostgreSQL
-        # db.session.execute(text('SET session_replication_role = replica;'))
+    # Удаляем другие возможные файлы БД
+    for db_file in Path('.').glob('*.db'):
+        db_file.unlink()
+        print(f"✓ Файл {db_file} удален")
 
-        # Получаем все таблицы
-        result = db.session.execute(text("""
-            SELECT tablename 
-            FROM pg_tables 
-            WHERE schemaname = 'public'
-        """))
-
-        tables = [row[0] for row in result]
-        print(f"Найдено таблиц: {tables}")
-
-        # Удаляем все таблицы
-        for table in tables:
-            if table != 'alembic_version':  # Пропускаем таблицу миграций
-                print(f"Удаляем таблицу: {table}")
-                db.session.execute(text(f'DROP TABLE IF EXISTS "{table}" CASCADE'))
-
-        # Удаляем таблицу миграций отдельно
-        db.session.execute(text('DROP TABLE IF EXISTS alembic_version'))
-
-        db.session.commit()
-        print("Все таблицы удалены!")
-
-        # Включаем внешние ключи обратно
-        # db.session.execute(text('SET session_replication_role = origin;'))
+    print("✓ База данных полностью очищена")
 
 
 if __name__ == '__main__':

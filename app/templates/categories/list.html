@@ -1,3 +1,4 @@
+<!-- app/templates/categories/list.html -->
 {% extends "base.html" %}
 
 {% block title %}Категории товаров - Warehouse{% endblock %}
@@ -19,7 +20,9 @@
                         <tr>
                             <th>Название</th>
                             <th>Описание</th>
-                            <th>Кол-во товаров</th>
+                            <th>Товары</th>
+                            <th>Размеры</th>
+                            <th>Цвета</th>
                             <th>Дата создания</th>
                             <th>Последнее обновление</th>
                             <th>Действия</th>
@@ -36,6 +39,12 @@
                             </td>
                             <td>
                                 <span class="badge bg-primary">{{ category.get_products_count() }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ category.sizes.count() }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-warning">{{ category.colors.count() }}</span>
                             </td>
                             <td>{{ category.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
                             <td>
@@ -76,7 +85,7 @@
                     <i class="bi bi-tags display-1 text-muted"></i>
                 </div>
                 <h4 class="text-muted">Категории не найдены</h4>
-                <p class="text-muted">Добавьте первую категорию для организации товаров</p>
+                <p class="text-muted">Добавьте первую категорию для организации товаров. Категория включает в себя размеры и цвета, которые будут доступны для товаров этой категории.</p>
                 <a href="{{ url_for('categories.add_category') }}" class="btn btn-primary btn-lg">
                     <i class="bi bi-plus-circle"></i> Добавить первую категорию
                 </a>
@@ -84,4 +93,119 @@
         {% endif %}
     </div>
 </div>
+
+{% if categories %}
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-primary">{{ categories|length }}</h3>
+                <p class="text-muted mb-0">Всего категорий</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-info">
+                    {% set total_sizes = namespace(value=0) %}
+                    {% for category in categories %}
+                        {% set total_sizes.value = total_sizes.value + category.sizes.count() %}
+                    {% endfor %}
+                    {{ total_sizes.value }}
+                </h3>
+                <p class="text-muted mb-0">Всего размеров</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="text-warning">
+                    {% set total_colors = namespace(value=0) %}
+                    {% for category in categories %}
+                        {% set total_colors.value = total_colors.value + category.colors.count() %}
+                    {% endfor %}
+                    {{ total_colors.value }}
+                </h3>
+                <p class="text-muted mb-0">Всего цветов</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Статистика по категориям</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for category in categories %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="border rounded p-3 h-100">
+                    <h6 class="mb-2">{{ category.name }}</h6>
+                    <div class="d-flex justify-content-between small text-muted mb-2">
+                        <span>Товаров: <strong>{{ category.get_products_count() }}</strong></span>
+                        <span>Размеров: <strong>{{ category.sizes.count() }}</strong></span>
+                        <span>Цветов: <strong>{{ category.colors.count() }}</strong></span>
+                    </div>
+                    {% if category.sizes.count() > 0 %}
+                    <div class="mb-1">
+                        <small class="text-muted">Размеры:</small>
+                        <div>
+                            {% for size in category.sizes %}
+                            <span class="badge bg-light text-dark me-1 mb-1">{{ size.name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if category.colors.count() > 0 %}
+                    <div>
+                        <small class="text-muted">Цвета:</small>
+                        <div>
+                            {% for color in category.colors %}
+                            <span class="badge me-1 mb-1" style="background-color: {{ color.hex_code or '#6c757d' }}; color: white;">{{ color.name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.badge {
+    font-size: 0.75em;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.table th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+</style>
 {% endblock %}

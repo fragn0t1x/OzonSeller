@@ -1,6 +1,8 @@
 # app/utils/stock_utils.py
 from app import db
 from app.models import ProductVariation, ProductPackage
+# Если файл существует, нужно обновить импорты
+from app.models.category import CategorySize, CategoryColor  # Заменяем старые импорты
 
 def create_variation(product_id, size, color):
     """Создает вариацию товара (неупакованный)"""

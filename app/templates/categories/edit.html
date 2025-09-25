@@ -1,10 +1,11 @@
+<!-- app/templates/categories/edit.html -->
 {% extends "base.html" %}
 
 {% block title %}Редактировать категорию - Warehouse{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
+    <div class="col-md-10">
         <div class="card">
             <div class="card-header">
                 <h4 class="card-title mb-0">Редактировать категорию</h4>
@@ -15,21 +16,105 @@
                     <strong>Товаров в категории:</strong> {{ category.get_products_count() }}
                 </div>
 
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Название категории *</label>
-                        <input type="text" class="form-control" id="name" name="name" required
-                               value="{{ category.name }}"
-                               placeholder="Например: Носки, Футболки, Обувь"
-                               maxlength="100">
+                <form method="POST" id="categoryForm">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Название категории *</label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                   value="{{ category.name }}"
+                                   placeholder="Например: Носки, Футболки, Обувь"
+                                   maxlength="100">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="description" class="form-label">Описание</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                      placeholder="Описание категории (необязательно)"
+                                      maxlength="500">{{ category.description or '' }}</textarea>
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Описание</label>
-                        <textarea class="form-control" id="description" name="description" rows="3"
-                                  placeholder="Описание категории (необязательно)"
-                                  maxlength="500">{{ category.description or '' }}</textarea>
+                    <hr>
+                    <h5 class="mb-3">Размеры для этой категории</h5>
+
+                    <div id="sizes-container">
+                        {% for size in category.sizes %}
+                        <div class="size-item card mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Название размера *</label>
+                                        <input type="text" class="form-control" name="size_names[]" required
+                                               value="{{ size.name }}"
+                                               placeholder="Например: S, M, L, 42, 43">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Описание размера</label>
+                                        <input type="text" class="form-control" name="size_descriptions[]"
+                                               value="{{ size.description or '' }}"
+                                               placeholder="Например: Средний, 42-й размер">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Штук в упаковке</label>
+                                        <input type="number" class="form-control" name="size_package_quantities[]"
+                                               value="{{ size.package_quantity or 1 }}" min="1" placeholder="1">
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <button type="button" class="btn btn-danger remove-size"
+                                                {% if category.sizes|length == 1 %}disabled{% endif %}>
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
+
+                    <button type="button" id="add-size" class="btn btn-outline-primary mb-4">
+                        <i class="bi bi-plus-circle"></i> Добавить размер
+                    </button>
+
+                    <hr>
+                    <h5 class="mb-3">Цвета для этой категории</h5>
+
+                    <div id="colors-container">
+                        {% for color in category.colors %}
+                        <div class="color-item card mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-5">
+                                        <label class="form-label">Название цвета *</label>
+                                        <input type="text" class="form-control" name="color_names[]" required
+                                               value="{{ color.name }}"
+                                               placeholder="Например: Красный, Синий, Черный">
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label">HEX код цвета</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">#</span>
+                                            <input type="text" class="form-control color-hex" name="color_hexes[]"
+                                                   value="{{ color.hex_code[1:] if color.hex_code else '' }}"
+                                                   placeholder="FFFFFF" maxlength="6"
+                                                   pattern="[0-9A-Fa-f]{6}">
+                                            <span class="input-group-text color-preview"
+                                                  style="width: 40px; background-color: {{ color.hex_code or '#6c757d' }};"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <button type="button" class="btn btn-danger remove-color"
+                                                {% if category.colors|length == 1 %}disabled{% endif %}>
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="button" id="add-color" class="btn btn-outline-primary mb-4">
+                        <i class="bi bi-plus-circle"></i> Добавить цвет
+                    </button>
 
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <a href="{{ url_for('categories.categories_list') }}" class="btn btn-secondary me-md-2">
@@ -44,4 +129,153 @@
         </div>
     </div>
 </div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Логика для размеров
+    const sizesContainer = document.getElementById('sizes-container');
+    const addSizeButton = document.getElementById('add-size');
+
+    addSizeButton.addEventListener('click', function() {
+        const newSize = sizesContainer.firstElementChild.cloneNode(true);
+        const inputs = newSize.querySelectorAll('input');
+        inputs.forEach(input => input.value = '');
+
+        const removeBtn = newSize.querySelector('.remove-size');
+        removeBtn.disabled = false;
+        removeBtn.addEventListener('click', function() {
+            if (sizesContainer.children.length > 1) {
+                newSize.remove();
+            }
+        });
+
+        sizesContainer.appendChild(newSize);
+    });
+
+    // Логика для цветов
+    const colorsContainer = document.getElementById('colors-container');
+    const addColorButton = document.getElementById('add-color');
+
+    addColorButton.addEventListener('click', function() {
+        const newColor = colorsContainer.firstElementChild.cloneNode(true);
+        const inputs = newColor.querySelectorAll('input');
+        inputs.forEach(input => input.value = '');
+
+        const removeBtn = newColor.querySelector('.remove-color');
+        removeBtn.disabled = false;
+        removeBtn.addEventListener('click', function() {
+            if (colorsContainer.children.length > 1) {
+                newColor.remove();
+            }
+        });
+
+        // Обновляем превью цвета
+        updateColorPreview(newColor);
+
+        colorsContainer.appendChild(newColor);
+    });
+
+    // Превью цвета
+    function updateColorPreview(colorElement) {
+        const hexInput = colorElement.querySelector('.color-hex');
+        const preview = colorElement.querySelector('.color-preview');
+
+        hexInput.addEventListener('input', function() {
+            const hex = this.value.trim();
+            if (hex.match(/^[0-9A-Fa-f]{6}$/)) {
+                preview.style.backgroundColor = '#' + hex;
+            } else {
+                preview.style.backgroundColor = '#6c757d';
+            }
+        });
+    }
+
+    // Инициализация превью для существующих цветов
+    document.querySelectorAll('.color-item').forEach(updateColorPreview);
+
+    // Удаление элементов
+    sizesContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-size') ||
+            e.target.closest('.remove-size')) {
+            const btn = e.target.classList.contains('remove-size') ? e.target : e.target.closest('.remove-size');
+            if (sizesContainer.children.length > 1) {
+                btn.closest('.size-item').remove();
+            }
+        }
+    });
+
+    colorsContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-color') ||
+            e.target.closest('.remove-color')) {
+            const btn = e.target.classList.contains('remove-color') ? e.target : e.target.closest('.remove-color');
+            if (colorsContainer.children.length > 1) {
+                btn.closest('.color-item').remove();
+            }
+        }
+    });
+
+    // Валидация формы
+    document.getElementById('categoryForm').addEventListener('submit', function(e) {
+        const sizeNames = Array.from(document.querySelectorAll('input[name="size_names[]"]'))
+            .map(input => input.value.trim()).filter(name => name !== '');
+        const colorNames = Array.from(document.querySelectorAll('input[name="color_names[]"]'))
+            .map(input => input.value.trim()).filter(name => name !== '');
+
+        if (sizeNames.length === 0) {
+            e.preventDefault();
+            alert('Пожалуйста, добавьте хотя бы один размер для категории.');
+            return;
+        }
+
+        if (colorNames.length === 0) {
+            e.preventDefault();
+            alert('Пожалуйста, добавьте хотя бы один цвет для категории.');
+            return;
+        }
+
+        // Проверяем уникальность размеров и цветов
+        const uniqueSizes = new Set(sizeNames);
+        const uniqueColors = new Set(colorNames);
+
+        if (uniqueSizes.size !== sizeNames.length) {
+            e.preventDefault();
+            alert('Обнаружены дублирующиеся названия размеров. Пожалуйста, убедитесь, что все размеры уникальны.');
+            return;
+        }
+
+        if (uniqueColors.size !== colorNames.length) {
+            e.preventDefault();
+            alert('Обнаружены дублирующиеся названия цветов. Пожалуйста, убедитесь, что все цвета уникальны.');
+            return;
+        }
+    });
+});
+</script>
+
+<style>
+.size-item, .color-item {
+    border-left: 4px solid #0d6efd;
+}
+
+.remove-size:disabled, .remove-color:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.color-preview {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    transition: background-color 0.3s ease;
+}
+
+.color-hex:valid + .input-group-text .color-preview {
+    border-color: #198754;
+}
+
+.color-hex:invalid:not(:focus) + .input-group-text .color-preview {
+    border-color: #dc3545;
+}
+</style>
+{% endblock %}
 {% endblock %}

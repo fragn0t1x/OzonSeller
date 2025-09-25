@@ -1,10 +1,11 @@
+<!-- app/templates/products/add.html -->
 {% extends "base.html" %}
 
 {% block title %}Добавить товар - Warehouse{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-10">
+    <div class="col-md-12">
         <div class="card">
             <div class="card-header">
                 <h4 class="card-title mb-0">Добавить новый товар</h4>
@@ -12,7 +13,7 @@
             <div class="card-body">
                 <form method="POST" id="productForm">
                     <!-- Основная информация о товаре -->
-                    <div class="row mb-3">
+                    <div class="row mb-4">
                         <div class="col-md-6">
                             <label for="name" class="form-label">Название товара *</label>
                             <input type="text" class="form-control" id="name" name="name" required
@@ -20,7 +21,8 @@
                         </div>
                         <div class="col-md-6">
                             <label for="category_id" class="form-label">Категория *</label>
-                            <select class="form-select" id="category_id" name="category_id" required>
+                            <select class="form-select" id="category_id" name="category_id" required
+                                    onchange="loadCategoryAttributes(this.value)">
                                 <option value="">Выберите категорию</option>
                                 {% for category in categories %}
                                 <option value="{{ category.id }}">{{ category.name }}</option>
@@ -32,108 +34,90 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label for="description" class="form-label">Описание</label>
                         <textarea class="form-control" id="description" name="description" rows="3"
                                   placeholder="Описание товара"></textarea>
                     </div>
 
-                    <hr>
-                    <h5 class="mb-3">Неупакованные вариации (размеры и цвета)</h5>
-                    <p class="text-muted">Выберите комбинации размеров и цветов для россыпи товара. Для каждой комбинации будет создана вариация с упаковкой 1 шт.</p>
+                    <!-- Атрибуты категории -->
+                    <div id="category-attributes" class="d-none">
+                        <hr>
+                        <h5 class="mb-3">Атрибуты категории</h5>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Размеры *</label>
-                            <div class="border p-3" style="max-height: 200px; overflow-y: auto;">
-                                {% for size in sizes %}
-                                <div class="form-check">
-                                    <input class="form-check-input size-checkbox" type="checkbox"
-                                           name="size_ids[]" value="{{ size.id }}" id="size_{{ size.id }}">
-                                    <label class="form-check-label" for="size_{{ size.id }}">
-                                        {{ size.name }}{% if size.description %} ({{ size.description }}){% endif %}
-                                    </label>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Размеры *</label>
+                                <div id="sizes-list" class="border p-3 rounded bg-light" style="max-height: 200px; overflow-y: auto;">
+                                    <small class="text-muted">Выберите категорию для загрузки размеров</small>
                                 </div>
-                                {% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Цвета *</label>
+                                <div id="colors-list" class="border p-3 rounded bg-light" style="max-height: 200px; overflow-y: auto;">
+                                    <small class="text-muted">Выберите категорию для загрузки цветов</small>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Цвета *</label>
-                            <div class="border p-3" style="max-height: 200px; overflow-y: auto;">
-                                {% for color in colors %}
-                                <div class="form-check">
-                                    <input class="form-check-input color-checkbox" type="checkbox"
-                                           name="color_ids[]" value="{{ color.id }}" id="color_{{ color.id }}">
-                                    <label class="form-check-label" for="color_{{ color.id }}">
-                                        <span class="color-badge" style="background-color: {{ color.hex_code or '#6c757d' }};"></span>
-                                        {{ color.name }}
-                                    </label>
-                                </div>
-                                {% endfor %}
+
+                        <div class="mb-3">
+                            <strong>Будут созданы вариации:</strong>
+                            <div id="variations-preview" class="mt-2 p-2 border rounded bg-light">
+                                <small class="text-muted">Выберите размеры и цвета для просмотра комбинаций</small>
                             </div>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <strong>Будут созданы неупакованные вариации:</strong>
-                        <div id="variations-preview" class="mt-2 p-2 border rounded bg-light">
-                            <small class="text-muted">Выберите размеры и цвета для просмотра комбинаций</small>
-                        </div>
-                    </div>
+                    <!-- Упаковки товара -->
+                    <div id="packages-section" class="d-none">
+                        <hr>
+                        <h5 class="mb-3">Упаковки товара</h5>
+                        <p class="text-muted">Добавьте упаковки с артикулами для выбранных комбинаций размер-цвет</p>
 
-                    <hr>
-                    <h5 class="mb-3">Упаковки товара</h5>
-                    <p class="text-muted">Добавьте упаковки с артикулами для выбранных комбинаций размер-цвет</p>
-
-                    <div id="packages-container">
-                        <div class="package-item card mb-3">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <label class="form-label">Размер *</label>
-                                        <select class="form-select package-size" name="package_size_ids[]" required>
-                                            <option value="">Выберите размер</option>
-                                            {% for size in sizes %}
-                                            <option value="{{ size.id }}">{{ size.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label">Цвет *</label>
-                                        <select class="form-select package-color" name="package_color_ids[]" required>
-                                            <option value="">Выберите цвет</option>
-                                            {% for color in colors %}
-                                            <option value="{{ color.id }}">{{ color.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">Штук в упаковке *</label>
-                                        <input type="number" class="form-control" name="package_quantities[]"
-                                               value="5" min="1" required placeholder="5, 10, 20">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label">Артикул (SKU) *</label>
-                                        <input type="text" class="form-control" name="skus[]" required
-                                               placeholder="Уникальный артикул">
-                                    </div>
-                                    <div class="col-md-1 d-flex align-items-end">
-                                        <button type="button" class="btn btn-danger remove-package" disabled>
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                        <div id="packages-container">
+                            <div class="package-item card mb-3">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <label class="form-label">Размер *</label>
+                                            <select class="form-select package-size" name="package_size_ids[]" required disabled>
+                                                <option value="">Сначала выберите категорию</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Цвет *</label>
+                                            <select class="form-select package-color" name="package_color_ids[]" required disabled>
+                                                <option value="">Сначала выберите категорию</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Штук в упаковке *</label>
+                                            <input type="number" class="form-control" name="package_quantities[]"
+                                                   value="5" min="1" required placeholder="5, 10, 20" disabled>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Артикул (SKU) *</label>
+                                            <input type="text" class="form-control" name="skus[]" required
+                                                   placeholder="Уникальный артикул" disabled>
+                                        </div>
+                                        <div class="col-md-1 d-flex align-items-end">
+                                            <button type="button" class="btn btn-danger remove-package" disabled>
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <button type="button" id="add-package" class="btn btn-outline-primary mb-3">
-                        <i class="bi bi-plus-circle"></i> Добавить упаковку
-                    </button>
+                        <button type="button" id="add-package" class="btn btn-outline-primary mb-3" disabled>
+                            <i class="bi bi-plus-circle"></i> Добавить упаковку
+                        </button>
+                    </div>
 
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <a href="{{ url_for('products.products_list') }}" class="btn btn-secondary me-md-2">Отмена</a>
-                        <button type="submit" class="btn btn-primary">Сохранить товар</button>
+                        <button type="submit" class="btn btn-primary" id="submit-btn" disabled>Сохранить товар</button>
                     </div>
                 </form>
             </div>
@@ -143,44 +127,158 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Обновление превью вариаций
-    function updateVariationsPreview() {
-        const selectedSizes = Array.from(document.querySelectorAll('.size-checkbox:checked'))
-            .map(cb => {
-                const label = cb.nextElementSibling;
-                return label.textContent.trim().split(' (')[0]; // Берем только название без описания
-            });
-        const selectedColors = Array.from(document.querySelectorAll('.color-checkbox:checked'))
-            .map(cb => {
-                const label = cb.nextElementSibling;
-                return label.textContent.trim();
-            });
+let currentSizes = [];
+let currentColors = [];
 
-        const preview = document.getElementById('variations-preview');
-
-        if (selectedSizes.length === 0 || selectedColors.length === 0) {
-            preview.innerHTML = '<small class="text-muted">Выберите размеры и цвета для просмотра комбинаций</small>';
-            return;
-        }
-
-        let html = '<div class="row g-1">';
-        selectedSizes.forEach(size => {
-            selectedColors.forEach(color => {
-                html += `<div class="col-12"><small>• ${size} / ${color} (1 шт/уп)</small></div>`;
-            });
-        });
-        html += `<div class="col-12 mt-2"><small class="text-success">Всего: ${selectedSizes.length * selectedColors.length} вариаций</small></div>`;
-        html += '</div>';
-        preview.innerHTML = html;
+function loadCategoryAttributes(categoryId) {
+    if (!categoryId) {
+        document.getElementById('category-attributes').classList.add('d-none');
+        document.getElementById('packages-section').classList.add('d-none');
+        document.getElementById('submit-btn').disabled = true;
+        return;
     }
 
-    // Слушатели для чекбоксов
-    document.querySelectorAll('.size-checkbox, .color-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', updateVariationsPreview);
+    fetch(`/categories/${categoryId}/sizes`)
+        .then(response => response.json())
+        .then(sizes => {
+            currentSizes = sizes;
+            displaySizes(sizes);
+            return fetch(`/categories/${categoryId}/colors`);
+        })
+        .then(response => response.json())
+        .then(colors => {
+            currentColors = colors;
+            displayColors(colors);
+            document.getElementById('category-attributes').classList.remove('d-none');
+            updatePackageSelects();
+            updateVariationsPreview();
+        })
+        .catch(error => {
+            console.error('Error loading category attributes:', error);
+            alert('Ошибка загрузки атрибутов категории');
+        });
+}
+
+function displaySizes(sizes) {
+    const container = document.getElementById('sizes-list');
+    if (sizes.length === 0) {
+        container.innerHTML = '<small class="text-muted">В этой категории нет размеров</small>';
+        return;
+    }
+
+    let html = '';
+    sizes.forEach(size => {
+        html += `
+            <div class="form-check">
+                <input class="form-check-input size-checkbox" type="checkbox"
+                       name="size_ids[]" value="${size.id}" id="size_${size.id}"
+                       onchange="updateVariationsPreview()">
+                <label class="form-check-label" for="size_${size.id}">
+                    ${size.name}${size.description ? ` (${size.description})` : ''}
+                </label>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+function displayColors(colors) {
+    const container = document.getElementById('colors-list');
+    if (colors.length === 0) {
+        container.innerHTML = '<small class="text-muted">В этой категории нет цветов</small>';
+        return;
+    }
+
+    let html = '';
+    colors.forEach(color => {
+        html += `
+            <div class="form-check">
+                <input class="form-check-input color-checkbox" type="checkbox"
+                       name="color_ids[]" value="${color.id}" id="color_${color.id}"
+                       onchange="updateVariationsPreview()">
+                <label class="form-check-label" for="color_${color.id}">
+                    <span class="color-badge" style="background-color: ${color.hex_code || '#6c757d'};"></span>
+                    ${color.name}
+                </label>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+function updatePackageSelects() {
+    const sizeSelects = document.querySelectorAll('.package-size');
+    const colorSelects = document.querySelectorAll('.package-color');
+
+    // Обновляем селекты размеров
+    sizeSelects.forEach(select => {
+        select.innerHTML = '<option value="">Выберите размер</option>';
+        currentSizes.forEach(size => {
+            select.innerHTML += `<option value="${size.id}">${size.name}</option>`;
+        });
+        select.disabled = false;
     });
 
-    // Логика для упаковок
+    // Обновляем селекты цветов
+    colorSelects.forEach(select => {
+        select.innerHTML = '<option value="">Выберите цвет</option>';
+        currentColors.forEach(color => {
+            select.innerHTML += `<option value="${color.id}">${color.name}</option>`;
+        });
+        select.disabled = false;
+    });
+
+    // Активируем кнопки
+    document.getElementById('add-package').disabled = false;
+    document.querySelectorAll('.remove-package').forEach(btn => btn.disabled = false);
+    document.querySelectorAll('input[name="package_quantities[]"]').forEach(input => input.disabled = false);
+    document.querySelectorAll('input[name="skus[]"]').forEach(input => input.disabled = false);
+}
+
+function updateVariationsPreview() {
+    const selectedSizes = Array.from(document.querySelectorAll('.size-checkbox:checked'))
+        .map(cb => {
+            const sizeId = cb.value;
+            const size = currentSizes.find(s => s.id == sizeId);
+            return size ? size.name : '';
+        })
+        .filter(name => name !== '');
+
+    const selectedColors = Array.from(document.querySelectorAll('.color-checkbox:checked'))
+        .map(cb => {
+            const colorId = cb.value;
+            const color = currentColors.find(c => c.id == colorId);
+            return color ? color.name : '';
+        })
+        .filter(name => name !== '');
+
+    const preview = document.getElementById('variations-preview');
+    const packagesSection = document.getElementById('packages-section');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (selectedSizes.length === 0 || selectedColors.length === 0) {
+        preview.innerHTML = '<small class="text-muted">Выберите размеры и цвета для просмотра комбинаций</small>';
+        packagesSection.classList.add('d-none');
+        submitBtn.disabled = true;
+        return;
+    }
+
+    let html = '<div class="row g-1">';
+    selectedSizes.forEach(size => {
+        selectedColors.forEach(color => {
+            html += `<div class="col-12"><small>• ${size} / ${color} (1 шт/уп)</small></div>`;
+        });
+    });
+    html += `<div class="col-12 mt-2"><small class="text-success">Всего: ${selectedSizes.length * selectedColors.length} вариаций</small></div>`;
+    html += '</div>';
+    preview.innerHTML = html;
+
+    packagesSection.classList.remove('d-none');
+    submitBtn.disabled = false;
+}
+
+// Логика для упаковок (остается без изменений)
+document.addEventListener('DOMContentLoaded', function() {
     const packagesContainer = document.getElementById('packages-container');
     const addPackageButton = document.getElementById('add-package');
 
@@ -208,9 +306,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         packagesContainer.appendChild(newPackage);
+        updatePackageSelects();
     });
 
-    // Удаление упаковок
     packagesContainer.addEventListener('click', function(e) {
         if (e.target.classList.contains('remove-package') ||
             e.target.closest('.remove-package')) {
@@ -232,7 +330,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Проверяем уникальность артикулов
         const skus = Array.from(document.querySelectorAll('input[name="skus[]"]')).map(input => input.value.trim());
         const uniqueSkus = new Set(skus.filter(sku => sku !== ''));
 
@@ -256,10 +353,6 @@ document.addEventListener('DOMContentLoaded', function() {
     vertical-align: middle;
 }
 
-.form-check-label {
-    cursor: pointer;
-}
-
 .size-checkbox:checked + .form-check-label,
 .color-checkbox:checked + .form-check-label {
     font-weight: 600;
@@ -273,6 +366,10 @@ document.addEventListener('DOMContentLoaded', function() {
 .remove-package:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.d-none {
+    display: none !important;
 }
 </style>
 {% endblock %}

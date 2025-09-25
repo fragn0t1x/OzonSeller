@@ -19,33 +19,29 @@ class Product(db.Model):
         return f'<Product {self.name}>'
 
 class ProductVariation(db.Model):
-    """Неупакованные товары (связь с справочниками размеров/цветов)"""
     __tablename__ = 'product_variations'
 
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id', ondelete='CASCADE'), nullable=False)
-    size_id = db.Column(db.Integer, db.ForeignKey('sizes.id'), nullable=False)  # Ссылка на справочник
-    color_id = db.Column(db.Integer, db.ForeignKey('colors.id'), nullable=False)  # Ссылка на справочник
-    # УБИРАЕМ quantity - теперь в StockUnpackaged
+    size_id = db.Column(db.Integer, db.ForeignKey('category_sizes.id'), nullable=False)  # Правильно!
+    color_id = db.Column(db.Integer, db.ForeignKey('category_colors.id'), nullable=False)  # Правильно!
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    size = db.relationship('Size', backref='variations')
-    color = db.relationship('Color', backref='variations')
+    size = db.relationship('CategorySize', backref='variations')
+    color = db.relationship('CategoryColor', backref='variations')
     packages = db.relationship('ProductPackage', backref='variation', cascade='all, delete-orphan')
 
     def __repr__(self):
         return f'<ProductVariation {self.size.name} - {self.color.name}>'
 
 class ProductPackage(db.Model):
-    """Упакованные товары (только связь с вариацией)"""
     __tablename__ = 'product_packages'
 
     id = db.Column(db.Integer, primary_key=True)
     variation_id = db.Column(db.Integer, db.ForeignKey('product_variations.id', ondelete='CASCADE'), nullable=False)
-    package_quantity = db.Column(db.Integer, nullable=False)  # Штук в упаковке
-    sku = db.Column(db.String(100), nullable=False, unique=True)  # Артикул
-    # УБИРАЕМ quantity - теперь в StockPackaged
+    package_quantity = db.Column(db.Integer, nullable=False)
+    sku = db.Column(db.String(100), nullable=False, unique=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -54,7 +50,6 @@ class ProductPackage(db.Model):
 
     @property
     def total_quantity_pieces(self):
-        """Общее количество штук в упаковках"""
         from app.models.stock import StockPackaged
         stock = StockPackaged.query.filter_by(package_id=self.id).first()
         if stock:
